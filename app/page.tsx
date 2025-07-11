@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Fridge from './components/Fridge';
 
 // --- TYPE DEFINITIONS ---
 interface IngredientInfo {
     name: string;
-    type: 'consumable' | 'reusable';
 }
 
 interface Ingredient {
@@ -27,8 +26,8 @@ interface ShoppingListItem {
 }
 
 interface ShoppingListType {
-    consumables: ShoppingListItem[];
-    reusables: ShoppingListItem[];
+    inFridge: ShoppingListItem[];
+    notInFridge: ShoppingListItem[];
 }
 
 interface AggregatedIngredient {
@@ -47,25 +46,25 @@ const database: {
     recipes: Recipe[];
 } = {
   "ingredients_info": {
-    "ground_beef": { "name": "Ground Beef", "type": "consumable" },
-    "onion": { "name": "Onion", "type": "consumable" },
-    "garlic_clove": { "name": "Garlic Clove", "type": "consumable" },
-    "canned_tomatoes": { "name": "Canned Tomatoes", "type": "consumable" },
-    "spaghetti_pasta": { "name": "Spaghetti Pasta", "type": "consumable" },
-    "chicken_breast": { "name": "Chicken Breast", "type": "consumable" },
-    "broccoli_head": { "name": "Broccoli Head", "type": "consumable" },
-    "white_rice": { "name": "White Rice", "type": "consumable" },
-    "lentils": { "name": "Dried Lentils", "type": "consumable" },
-    "carrot": { "name": "Carrot", "type": "consumable" },
-    "celery_stalk": { "name": "Celery Stalk", "type": "consumable" },
-    "vegetable_broth": { "name": "Vegetable Broth", "type": "consumable" },
-    "olive_oil": { "name": "Olive Oil", "type": "reusable" },
-    "oregano": { "name": "Dried Oregano", "type": "reusable" },
-    "soy_sauce": { "name": "Soy Sauce", "type": "reusable" },
-    "ginger": { "name": "Ginger", "type": "reusable" },
-    "cumin": { "name": "Cumin Powder", "type": "reusable" },
-    "salt": { "name": "Salt", "type": "reusable" },
-    "black_pepper": { "name": "Black Pepper", "type": "reusable" }
+    "ground_beef": { "name": "Ground Beef" },
+    "onion": { "name": "Onion" },
+    "garlic_clove": { "name": "Garlic Clove" },
+    "canned_tomatoes": { "name": "Canned Tomatoes" },
+    "spaghetti_pasta": { "name": "Spaghetti Pasta" },
+    "chicken_breast": { "name": "Chicken Breast" },
+    "broccoli_head": { "name": "Broccoli Head" },
+    "white_rice": { "name": "White Rice" },
+    "lentils": { "name": "Dried Lentils" },
+    "carrot": { "name": "Carrot" },
+    "celery_stalk": { "name": "Celery Stalk" },
+    "vegetable_broth": { "name": "Vegetable Broth" },
+    "olive_oil": { "name": "Olive Oil" },
+    "oregano": { "name": "Dried Oregano" },
+    "soy_sauce": { "name": "Soy Sauce" },
+    "ginger": { "name": "Ginger" },
+    "cumin": { "name": "Cumin Powder" },
+    "salt": { "name": "Salt" },
+    "black_pepper": { "name": "Black Pepper" }
   },
   "recipes": [
     { "id": "recipe-1", "name": "Spaghetti Bolognese", "ingredients": [
@@ -82,6 +81,17 @@ const database: {
     ]}
   ]
 };
+
+// Fridge mock data (copied from Fridge.tsx)
+const initialFridgeContents = [
+    { id: 1, name: 'Olive Oil', quantity: 1, unit: 'bottle' },
+    { id: 2, name: 'Soy Sauce', quantity: 1, unit: 'bottle' },
+    { id: 3, name: 'Salt', quantity: 1, unit: 'shaker' },
+    { id: 4, name: 'Black Pepper', quantity: 1, unit: 'grinder' },
+    { id: 5, name: 'Onion', quantity: 2, unit: 'whole' },
+    { id: 6, name: 'Garlic Clove', quantity: 5, unit: 'cloves' },
+    { id: 7, name: 'Chicken Breast', quantity: 1, unit: 'breasts' },
+];
 
 // --- Helper Icons ---
 const ShoppingCartIcon: React.FC = () => (
@@ -113,28 +123,96 @@ interface RecipeCardProps {
     onToggle: (recipeId: string) => void;
 }
 
-const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle }) => (
-    <label 
-        htmlFor={recipe.id} 
-        className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-400' : 'hover:bg-gray-100'}`}
-    >
-        <input 
-            type="checkbox" 
-            id={recipe.id} 
-            checked={isSelected}
-            onChange={() => onToggle(recipe.id)}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4"
-        />
-        <span className="font-medium text-lg text-gray-800">{recipe.name}</span>
-    </label>
+const ExpandIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block h-5 w-5">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+    </svg>
 );
+
+const EditIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block h-5 w-5">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19.5 2 21l1.5-5L16.5 3.5z" />
+    </svg>
+);
+
+const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle }) => {
+    const [showIngredients, setShowIngredients] = useState(false);
+
+    // Close the floating box when clicking outside
+    useEffect(() => {
+        if (!showIngredients) return;
+        const handler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest(`#expand-box-${recipe.id}`) && !target.closest(`#expand-btn-${recipe.id}`)) {
+                setShowIngredients(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showIngredients, recipe.id]);
+
+    return (
+        <div className={`relative flex items-center p-4 border rounded-lg transition-all ${isSelected ? 'bg-blue-50 border-blue-400' : 'hover:bg-gray-100'}`}> 
+            <input 
+                type="checkbox" 
+                id={recipe.id} 
+                checked={isSelected}
+                onChange={() => onToggle(recipe.id)}
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4"
+            />
+            <button
+                type="button"
+                className="font-medium text-lg text-gray-800 flex-1 text-left focus:outline-none bg-transparent border-0 cursor-pointer"
+                style={{background: 'none', boxShadow: 'none'}} // Remove button styles
+                onClick={() => onToggle(recipe.id)}
+                aria-pressed={isSelected}
+            >
+                {recipe.name}
+            </button>
+            <button
+                id={`expand-btn-${recipe.id}`}
+                type="button"
+                className="ml-2 p-1 rounded hover:bg-gray-200"
+                aria-label="Show ingredients"
+                onClick={() => setShowIngredients(v => !v)}
+            >
+                <ExpandIcon />
+            </button>
+            <a
+                href={`/recipes/${recipe.id}`}
+                className="ml-2 p-1 rounded hover:bg-gray-200"
+                aria-label="Edit recipe"
+            >
+                <EditIcon />
+            </a>
+            {showIngredients && (
+                <div
+                    id={`expand-box-${recipe.id}`}
+                    className="absolute z-20 left-1/2 top-full mt-2 -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 min-w-[220px] max-w-xs"
+                >
+                    <div className="font-semibold mb-2 text-gray-900">Ingredients</div>
+                    <ul className="list-disc pl-5 text-gray-800 text-sm">
+                        {recipe.ingredients.map(ing => (
+                            <li key={ing.id}>
+                                {database.ingredients_info[ing.id]?.name || ing.id}: {ing.quantity} {ing.unit}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
 
 interface ShoppingListProps {
     list: ShoppingListType | null;
 }
 
 const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
-    if (!list || (list.consumables.length === 0 && list.reusables.length === 0)) {
+    if (!list || (list.inFridge.length === 0 && list.notInFridge.length === 0)) {
         return (
             <div className="text-center py-8 text-gray-500">
                 <p>Select some recipes and click "Generate Shopping List" to see your ingredients.</p>
@@ -144,11 +222,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
-            {list.consumables.length > 0 && (
+            {list.notInFridge.length > 0 && (
                 <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-3 text-blue-800 flex items-center"><ShoppingCartIcon /> Consumables to Buy</h3>
+                    <h3 className="text-xl font-semibold mb-3 text-blue-800 flex items-center"><ShoppingCartIcon /> Not in Fridge (To Buy)</h3>
                     <ul className="space-y-2 pl-2">
-                        {list.consumables.map(item => (
+                        {list.notInFridge.map(item => (
                             <li key={item.name} className="flex items-start">
                                 <span className="text-gray-800">{item.name}: <strong className="ml-1 font-medium">{item.amountStr}</strong></span>
                             </li>
@@ -156,11 +234,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
                     </ul>
                 </div>
             )}
-            {list.reusables.length > 0 && (
+            {list.inFridge.length > 0 && (
                 <div>
-                    <h3 className="text-xl font-semibold mb-3 text-green-800 flex items-center"><CheckSquareIcon /> Reusable Items to Check</h3>
+                    <h3 className="text-xl font-semibold mb-3 text-green-800 flex items-center"><CheckSquareIcon /> Already in Fridge</h3>
                     <ul className="space-y-2 pl-2">
-                        {list.reusables.map(item => (
+                        {list.inFridge.map(item => (
                             <li key={item.name} className="flex items-start">
                                 <span className="text-gray-800">{item.name}: <strong className="ml-1 font-medium">{item.amountStr}</strong></span>
                             </li>
@@ -178,6 +256,10 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
 const App: React.FC = () => {
     const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
     const [shoppingList, setShoppingList] = useState<ShoppingListType | null>(null);
+    const [fridgeItems, setFridgeItems] = useState(initialFridgeContents);
+
+    // Compute aggregated usage for selected recipes
+    const [aggregatedUsage, setAggregatedUsage] = useState<AggregatedIngredients>({});
 
     const handleToggleRecipe = (recipeId: string) => {
         setSelectedRecipeIds(prevIds => {
@@ -191,16 +273,14 @@ const App: React.FC = () => {
         });
     };
 
-    const handleGenerateList = () => {
+    useEffect(() => {
         const recipesToMake = database.recipes.filter(r => selectedRecipeIds.has(r.id));
-        
         const aggregated: AggregatedIngredients = {};
         recipesToMake.forEach(recipe => {
             recipe.ingredients.forEach(ingredient => {
                 const { id, quantity, unit } = ingredient;
                 if (!aggregated[id]) aggregated[id] = {};
                 if (!aggregated[id][unit]) aggregated[id][unit] = 0;
-                
                 if (typeof quantity === 'number' && typeof aggregated[id][unit] === 'number') {
                     (aggregated[id][unit] as number) += quantity;
                 } else {
@@ -208,28 +288,25 @@ const App: React.FC = () => {
                 }
             });
         });
-
-        const consumables: ShoppingListItem[] = [];
-        const reusables: ShoppingListItem[] = [];
-
+        setAggregatedUsage(aggregated);
+        const inFridge: ShoppingListItem[] = [];
+        const notInFridge: ShoppingListItem[] = [];
         for (const ingId in aggregated) {
             const info = database.ingredients_info[ingId];
             if (!info) continue;
-
             const amounts = aggregated[ingId];
             const amountStr = Object.entries(amounts).map(([unit, qty]) => `${qty} ${unit}`).join(', ');
-
             const itemDetails: ShoppingListItem = { name: info.name, amountStr };
-
-            if (info.type === 'consumable') {
-                consumables.push(itemDetails);
+            // Check if in fridge (case-insensitive match)
+            const inFridgeMatch = fridgeItems.some(f => f.name.toLowerCase() === info.name.toLowerCase());
+            if (inFridgeMatch) {
+                inFridge.push(itemDetails);
             } else {
-                reusables.push(itemDetails);
+                notInFridge.push(itemDetails);
             }
         }
-        
-        setShoppingList({ consumables, reusables });
-    };
+        setShoppingList({ inFridge, notInFridge });
+    }, [selectedRecipeIds, fridgeItems]);
 
     return (
         <div className="bg-gray-50 text-gray-800 min-h-screen">
@@ -262,16 +339,6 @@ const App: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="text-center my-8">
-                            <button 
-                                onClick={handleGenerateList}
-                                className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                disabled={selectedRecipeIds.size === 0}
-                            >
-                                Generate Shopping List
-                            </button>
-                        </div>
-
                         <div className="bg-white p-6 rounded-xl shadow-md">
                             <h2 className="text-2xl font-semibold mb-4 border-b pb-2">2. Your Consolidated Shopping List</h2>
                             <ShoppingList list={shoppingList} />
@@ -281,7 +348,7 @@ const App: React.FC = () => {
                     {/* Right side, Fridge */}
                     <div>
                         <div className="mt-8 lg:mt-0">
-                            <Fridge/>
+                            <Fridge items={fridgeItems} setItems={setFridgeItems} aggregatedUsage={aggregatedUsage} database={database} />
                         </div>
                     </div>
                 </div>

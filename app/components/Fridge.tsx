@@ -29,6 +29,10 @@ const TrashIcon: React.FC<{className?: string}> = ({ className }) => (
     </svg>
 );
 
+const RightArrowIcon: React.FC = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block align-middle mx-1"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+);
+
 // --- INITIAL MOCK DATA ---
 const initialFridgeContents: FridgeItem[] = [
     { id: 1, name: 'Olive Oil', quantity: 1, unit: 'bottle' },
@@ -40,9 +44,14 @@ const initialFridgeContents: FridgeItem[] = [
     { id: 7, name: 'Chicken Breast', quantity: 1, unit: 'breasts' },
 ];
 
+interface FridgeProps {
+    items: FridgeItem[];
+    setItems: React.Dispatch<React.SetStateAction<FridgeItem[]>>;
+    aggregatedUsage: { [ingredientId: string]: { [unit: string]: number | string } };
+    database: any;
+}
 
-const Fridge: React.FC = () => {
-    const [items, setItems] = useState<FridgeItem[]>(initialFridgeContents);
+const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, database }) => {
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState('');
     const [newItemUnit, setNewItemUnit] = useState('');
@@ -134,64 +143,78 @@ const Fridge: React.FC = () => {
             
             {/* Item List */}
             <ul className="space-y-1 mb-4">
-                {items.map((item) => (
-                    <li key={item.id} className="group flex justify-between items-center p-2 rounded-md hover:bg-gray-50">
-                        {/* Name Field */}
-                        <div className="flex-1 ml-10">
-                            {editingField?.id === item.id && editingField?.field === 'name' ? (
-                                <input 
-                                    type="text"
-                                    value={editingValue}
-                                    onChange={(e) => setEditingValue(e.target.value)}
-                                    onBlur={handleSaveEdit}
-                                    onKeyDown={handleEditKeyDown}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    autoFocus
-                                />
-                            ) : (
-                                <span className="text-gray-800 cursor-pointer" onClick={() => handleStartEdit(item, 'name')}>{item.name}</span>
-                            )}
-                        </div>
-
-                        {/* Quantity and Unit Fields */}
-                        <div className="flex items-center gap-2 ml-4">
-                            {editingField?.id === item.id && editingField?.field === 'quantity' ? (
-                                <input 
-                                    type="number"
-                                    step="0.1"
-                                    value={editingValue}
-                                    onChange={(e) => setEditingValue(e.target.value)}
-                                    onBlur={handleSaveEdit}
-                                    onKeyDown={handleEditKeyDown}
-                                    className="w-20 px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    autoFocus
-                                />
-                            ) : (
-                                <span className="font-medium text-gray-600 cursor-pointer px-2 py-1 rounded-md" onClick={() => handleStartEdit(item, 'quantity')}>
-                                    {item.quantity}
-                                </span>
-                            )}
-
-                            {editingField?.id === item.id && editingField?.field === 'unit' ? (
-                                <input 
-                                    type="text"
-                                    value={editingValue}
-                                    onChange={(e) => setEditingValue(e.target.value)}
-                                    onBlur={handleSaveEdit}
-                                    onKeyDown={handleEditKeyDown}
-                                    className="w-24 px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    autoFocus
-                                />
-                            ) : (
-                                <span className="text-gray-600 w-24 cursor-pointer" onClick={() => handleStartEdit(item, 'unit')}>{item.unit}</span>
-                            )}
-
-                            <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity">
-                                <TrashIcon />
-                            </button>
-                        </div>
-                    </li>
-                ))}
+                {items.map((item) => {
+                    // Find usage for this item (case-insensitive match)
+                    const usageEntry = Object.entries(aggregatedUsage).find(([ingId, unitMap]) => {
+                        // Try to match by name (case-insensitive)
+                        return (
+                            item.name.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase() ||
+                            item.name.toLowerCase() === database.ingredients_info[ingId]?.name?.toLowerCase()
+                        );
+                    });
+                    let usedQty: number | null = null;
+                    let usedUnit = '';
+                    if (usageEntry) {
+                        const [ingId, unitMap] = usageEntry;
+                        // Try to match by unit (case-insensitive)
+                        const unitMatch = Object.entries(unitMap).find(([unit, qty]) => unit.toLowerCase() === item.unit.toLowerCase());
+                        if (unitMatch && typeof unitMatch[1] === 'number') {
+                            usedQty = unitMatch[1] as number;
+                            usedUnit = unitMatch[0];
+                        }
+                    }
+                    const remaining = usedQty !== null ? item.quantity - usedQty : item.quantity;
+                    return (
+                        <li key={item.id} className="group flex justify-between p-2 rounded-md hover:bg-gray-50">
+                            {/* Name Field */}
+                            <div className="flex-2   ml-6">
+                                {editingField?.id === item.id && editingField?.field === 'name' ? (
+                                    <input 
+                                        type="text"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={handleSaveEdit}
+                                        onKeyDown={handleEditKeyDown}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <span className="text-gray-600 cursor-pointer" onClick={() => handleStartEdit(item, 'name')}>{item.name}</span>
+                                )}
+                            </div>
+                            {/* Quantity and Unit Fields */}
+                            <div className="flex-1 items-center gap-2 ml-2">
+                                {editingField?.id === item.id && editingField?.field === 'quantity' ? (
+                                    <input 
+                                        type="number"
+                                        step="0.1"
+                                        value={editingValue}
+                                        onChange={(e) => setEditingValue(e.target.value)}
+                                        onBlur={handleSaveEdit}
+                                        onKeyDown={handleEditKeyDown}
+                                        className="w-20 px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <span className="font-medium text-gray-600 cursor-pointer px-2 py-1 rounded-md flex items-center w-36 justify-between" onClick={() => handleStartEdit(item, 'quantity')}>
+                                        <span className="block min-w-[80px] text-left">{item.quantity} {item.unit}</span>
+                                        <span className="flex items-left min-w-[120px] justify-end">
+                                            {usedQty !== null && usedUnit ? (
+                                                <>
+                                                    <RightArrowIcon />
+                                                    <span className={remaining < 0 ? 'text-red-600 font-bold' : ''}>{remaining} {item.unit}</span>
+                                                </>
+                                            ) : null}
+                                        </span>
+                                    </span>
+                                )}
+                                <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity">
+                                    <TrashIcon />
+                                </button>
+                            </div>
+                        </li>
+                    );
+                })}
             </ul>
             
              {items.length === 0 && (
