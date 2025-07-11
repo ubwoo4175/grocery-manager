@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Fridge from './components/Fridge';
 
 // --- TYPE DEFINITIONS ---
 interface IngredientInfo {
@@ -232,45 +233,57 @@ const App: React.FC = () => {
 
     return (
         <div className="bg-gray-50 text-gray-800 min-h-screen">
-            <div className="container mx-auto p-4 md:p-8 max-w-4xl">
+            <div className="container mx-auto p-4 md:p-8 max-w-8xl">
                 <header className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-gray-900">Recipe Ingredient Manager</h1>
                     <p className="text-lg text-gray-600 mt-2">Select meals, and we'll generate your shopping list.</p>
                 </header>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 [auto-300px] lg:gap-8">
+                    <div>
+                        {/* Left side, recipe */}
+                        <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+                            <h2 className="text-2xl font-semibold mb-4 border-b pb-2">1. Choose Your Recipes</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {database.recipes.map(recipe => (
+                                    <RecipeCard 
+                                        key={recipe.id}
+                                        recipe={recipe}
+                                        isSelected={selectedRecipeIds.has(recipe.id)}
+                                        onToggle={handleToggleRecipe}
+                                    />
+                                ))}
+                            </div>
+                            <div className="mt-6 pt-6 border-t text-center">
+                                <a href="/recipes/new" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all">
+                                    <PlusIcon />
+                                    Add New Recipe
+                                </a>
+                            </div>
+                        </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-md mb-8">
-                    <h2 className="text-2xl font-semibold mb-4 border-b pb-2">1. Choose Your Recipes</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {database.recipes.map(recipe => (
-                            <RecipeCard 
-                                key={recipe.id}
-                                recipe={recipe}
-                                isSelected={selectedRecipeIds.has(recipe.id)}
-                                onToggle={handleToggleRecipe}
-                            />
-                        ))}
+                        <div className="text-center my-8">
+                            <button 
+                                onClick={handleGenerateList}
+                                className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                disabled={selectedRecipeIds.size === 0}
+                            >
+                                Generate Shopping List
+                            </button>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-md">
+                            <h2 className="text-2xl font-semibold mb-4 border-b pb-2">2. Your Consolidated Shopping List</h2>
+                            <ShoppingList list={shoppingList} />
+                        </div>
                     </div>
-                    <div className="mt-6 pt-6 border-t text-center">
-                        <a href="/recipes/new" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all">
-                            <PlusIcon />
-                            Add New Recipe
-                        </a>
+
+                    {/* Right side, Fridge */}
+                    <div>
+                        <div className="mt-8 lg:mt-0">
+                            <Fridge/>
+                        </div>
                     </div>
-                </div>
-
-                <div className="text-center my-8">
-                    <button 
-                        onClick={handleGenerateList}
-                        className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        disabled={selectedRecipeIds.size === 0}
-                    >
-                        Generate Shopping List
-                    </button>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h2 className="text-2xl font-semibold mb-4 border-b pb-2">2. Your Consolidated Shopping List</h2>
-                    <ShoppingList list={shoppingList} />
                 </div>
             </div>
         </div>
