@@ -141,6 +141,15 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                 My Fridge
             </h2>
             
+            {/* Headers for quantity columns */}
+            <div className="flex justify-between px-2 mb-2">
+                <div className="flex-3 ml-6"></div> {/* Empty space for name column */}
+                <div className="flex-2 flex items-center gap-2 ml-2">
+                    <span className="block min-w-[80px] text-left text-sm font-medium text-gray-600">Amount left</span>
+                    <span className="flex min-w-[120px] justify-end text-left text-sm font-medium text-gray-600">You need</span>
+                </div>
+            </div>
+            
             {/* Item List */}
             <ul className="space-y-1 mb-4">
                 {items.map((item) => {
@@ -167,7 +176,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                     return (
                         <li key={item.id} className="group flex justify-between p-2 rounded-md hover:bg-gray-50">
                             {/* Name Field */}
-                            <div className="flex-2   ml-6">
+                            <div className="flex-3 ml-6">
                                 {editingField?.id === item.id && editingField?.field === 'name' ? (
                                     <input 
                                         type="text"
@@ -181,9 +190,9 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                                 ) : (
                                     <span className="text-gray-600 cursor-pointer" onClick={() => handleStartEdit(item, 'name')}>{item.name}</span>
                                 )}
-                            </div>
+                            </div>  
                             {/* Quantity and Unit Fields */}
-                            <div className="flex-1 items-center gap-2 ml-2">
+                            <div className="flex-2 items-center gap-2 ml-2">
                                 {editingField?.id === item.id && editingField?.field === 'quantity' ? (
                                     <input 
                                         type="number"
@@ -200,10 +209,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                                         <span className="block min-w-[80px] text-left">{item.quantity} {item.unit}</span>
                                         <span className="flex items-left min-w-[120px] justify-end">
                                             {usedQty !== null && usedUnit ? (
-                                                <>
-                                                    <RightArrowIcon />
-                                                    <span className={remaining < 0 ? 'text-red-600 font-bold' : ''}>{remaining} {item.unit}</span>
-                                                </>
+                                                <span className={usedQty > item.quantity ? 'text-red-600 font-bold' : ''}>{usedQty} {item.unit}</span>
                                             ) : null}
                                         </span>
                                     </span>
