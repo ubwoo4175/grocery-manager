@@ -15,7 +15,7 @@ const Navbar: React.FC = () => {
                 <div className="flex items-center justify-between h-16">
                     <a href="/" className="flex items-center space-x-3 text-gray-800 hover:text-blue-600 transition-colors">
                         <ChefHatIcon />
-                        <span className="text-xl font-bold">Recipe Manager</span>
+                        <span className="text-xl font-bold">Grocery Manager</span>
                     </a>
                     {/* You can add more nav links here in the future */}
                     <div>

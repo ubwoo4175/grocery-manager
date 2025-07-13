@@ -142,16 +142,15 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
             </h2>
             
             {/* Headers for quantity columns */}
-            <div className="flex justify-between px-2 mb-2">
-                <div className="flex-3 ml-6"></div> {/* Empty space for name column */}
-                <div className="flex-2 flex items-center gap-2 ml-2">
-                    <span className="block min-w-[80px] text-left text-sm font-medium text-gray-600">Amount left</span>
-                    <span className="flex min-w-[120px] justify-end text-left text-sm font-medium text-gray-600">You need</span>
-                </div>
+            <div className="grid grid-cols-12 gap-2">
+                <div className="col-span-5 text-sm font-medium text-gray-600 pl-3">Ingredient</div>
+                <div className="col-span-3 text-sm font-medium text-gray-600 pl-3">Amount left</div>
+                <div className="col-span-2 text-sm font-medium text-gray-600 pl-3">You need</div>
+                <div className="col-span-2"></div> {/* Empty column for delete button alignment */}
             </div>
             
             {/* Item List */}
-            <ul className="space-y-1 mb-4">
+            <ul className="grid grid-cols-12 gap-2 space-y-1 mb-4">
                 {items.map((item) => {
                     // Find usage for this item (case-insensitive match)
                     const usageEntry = Object.entries(aggregatedUsage).find(([ingId, unitMap]) => {
@@ -174,9 +173,9 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                     }
                     const remaining = usedQty !== null ? item.quantity - usedQty : item.quantity;
                     return (
-                        <li key={item.id} className="group flex justify-between p-2 rounded-md hover:bg-gray-50">
+                        <li key={item.id} className="col-span-12 grid grid-cols-12 gap-2 items-center p-1 rounded-md hover:bg-gray-50 group">
                             {/* Name Field */}
-                            <div className="flex-3 ml-6">
+                            <div className="col-span-5">
                                 {editingField?.id === item.id && editingField?.field === 'name' ? (
                                     <input 
                                         type="text"
@@ -184,15 +183,15 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                                         onChange={(e) => setEditingValue(e.target.value)}
                                         onBlur={handleSaveEdit}
                                         onKeyDown={handleEditKeyDown}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                         autoFocus
                                     />
                                 ) : (
-                                    <span className="text-gray-600 cursor-pointer" onClick={() => handleStartEdit(item, 'name')}>{item.name}</span>
+                                    <span className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors" onClick={() => handleStartEdit(item, 'name')}>{item.name}</span>
                                 )}
                             </div>  
-                            {/* Quantity and Unit Fields */}
-                            <div className="flex-2 items-center gap-2 ml-2">
+                            {/* Quantity and Unit Fields (Amount Left) */}
+                            <div className="col-span-3">
                                 {editingField?.id === item.id && editingField?.field === 'quantity' ? (
                                     <input 
                                         type="number"
@@ -201,21 +200,22 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                                         onChange={(e) => setEditingValue(e.target.value)}
                                         onBlur={handleSaveEdit}
                                         onKeyDown={handleEditKeyDown}
-                                        className="w-20 px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                         autoFocus
                                     />
                                 ) : (
-                                    <span className="font-medium text-gray-600 cursor-pointer px-2 py-1 rounded-md flex items-center w-36 justify-between" onClick={() => handleStartEdit(item, 'quantity')}>
-                                        <span className="block min-w-[80px] text-left">{item.quantity} {item.unit}</span>
-                                        <span className="flex items-left min-w-[120px] justify-end">
-                                            {usedQty !== null && usedUnit ? (
-                                                <span className={usedQty > item.quantity ? 'text-red-600 font-bold' : ''}>{usedQty} {item.unit}</span>
-                                            ) : null}
-                                        </span>
-                                    </span>
+                                    <span className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors" onClick={() => handleStartEdit(item, 'quantity')}>{item.quantity} {item.unit}</span>
                                 )}
+                            </div>
+                            {/* You Need Field */}
+                            <div className="col-span-3">
+                                <span className={`block w-full px-3 py-2 rounded-md ${usedQty !== null && usedQty > item.quantity ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : 'N/A'}
+                                </span>
+                            </div>
+                            <div className="col-span-1 flex justify-end pr-2">
                                 <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity">
-                                    <TrashIcon />
+                                        <TrashIcon />
                                 </button>
                             </div>
                         </li>

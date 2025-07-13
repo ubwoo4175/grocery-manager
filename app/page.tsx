@@ -215,7 +215,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
     if (!list || (list.inFridge.length === 0 && list.notInFridge.length === 0)) {
         return (
             <div className="text-center py-8 text-gray-500">
-                <p>Select some recipes and click "Generate Shopping List" to see your ingredients.</p>
+                <p>Select recipes to see your ingredients.</p>
             </div>
         );
     }
@@ -295,12 +295,15 @@ const App: React.FC = () => {
             const info = database.ingredients_info[ingId];
             if (!info) continue;
             const amounts = aggregated[ingId];
+            console.log(amounts)
             const amountStr = Object.entries(amounts).map(([unit, qty]) => `${qty} ${unit}`).join(', ');
             const itemDetails: ShoppingListItem = { name: info.name, amountStr };
             // Check if in fridge (case-insensitive match)
             const inFridgeMatch = fridgeItems.some(f => f.name.toLowerCase() === info.name.toLowerCase());
             if (inFridgeMatch) {
+                console.log(inFridgeMatch)
                 inFridge.push(itemDetails);
+                //여기 수정해야함함
             } else {
                 notInFridge.push(itemDetails);
             }
@@ -312,7 +315,7 @@ const App: React.FC = () => {
         <div className="bg-gray-50 text-gray-800 min-h-screen">
             <div className="container mx-auto p-4 md:p-8 max-w-8xl">
                 <header className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-900">Recipe Ingredient Manager</h1>
+                    <h1 className="text-4xl font-bold text-gray-900">Grocery Manager</h1>
                     <p className="text-lg text-gray-600 mt-2">Select meals, and we'll generate your shopping list.</p>
                 </header>
                 
