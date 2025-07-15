@@ -2,76 +2,64 @@
 
 import React, { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-
-// --- TYPE DEFINITIONS (copied from homepage) ---
-interface Ingredient {
-  id: string;
-  quantity: number | string;
-  unit: string;
-}
-
-interface Recipe {
-  id: string;
-  name: string;
-  ingredients: Ingredient[];
-}
+import { Ingredient, Recipe } from '@/lib/types';
 
 // --- Mock database (copied from homepage) ---
 const recipes: Recipe[] = [
   {
     id: "recipe-1",
-    name: "Spaghetti Bolognese",
-    ingredients: [
-      { id: "ground_beef", quantity: 500, unit: "g" },
-      { id: "onion", quantity: 1, unit: "whole" },
-      { id: "garlic_clove", quantity: 3, unit: "cloves" },
-      { id: "canned_tomatoes", quantity: 800, unit: "g" },
-      { id: "spaghetti_pasta", quantity: 400, unit: "g" },
-      { id: "olive_oil", quantity: 2, unit: "tbsp" },
-      { id: "oregano", quantity: 1, unit: "tsp" },
-    ],
+    recipe_name: "Spaghetti Bolognese",
+    ingredients: {
+      "ground_beef": { "g": 500 },
+      "onion": { "whole": 1 },
+      "garlic_clove": { "cloves": 3 },
+      "canned_tomatoes": { "g": 800 },
+      "spaghetti_pasta": { "g": 400 },
+      "olive_oil": { "tbsp": 2 },
+      "oregano": { "tsp": 1 },
+    },
   },
   {
     id: "recipe-2",
-    name: "Chicken Stir-Fry",
-    ingredients: [
-      { id: "chicken_breast", quantity: 2, unit: "breasts" },
-      { id: "broccoli_head", quantity: 1, unit: "head" },
-      { id: "onion", quantity: 1, unit: "whole" },
-      { id: "garlic_clove", quantity: 2, unit: "cloves" },
-      { id: "soy_sauce", quantity: 4, unit: "tbsp" },
-      { id: "ginger", quantity: 1, unit: "inch piece" },
-      { id: "white_rice", quantity: 300, unit: "g" },
-      { id: "olive_oil", quantity: 1, unit: "tbsp" },
-    ],
+    recipe_name: "Chicken Stir-Fry",
+    ingredients: {
+      "chicken_breast": { "breasts": 2 },
+      "broccoli_head": { "head": 1 },
+      "onion": { "whole": 1 },
+      "garlic_clove": { "cloves": 2 },
+      "soy_sauce": { "tbsp": 4 },
+      "ginger": { "inch piece": 1 },
+      "white_rice": { "g": 300 },
+      "olive_oil": { "tbsp": 1 },
+    },
   },
   {
     id: "recipe-3",
-    name: "Hearty Lentil Soup",
-    ingredients: [
-      { id: "lentils", quantity: 500, unit: "g" },
-      { id: "carrot", quantity: 2, unit: "whole" },
-      { id: "celery_stalk", quantity: 2, unit: "stalks" },
-      { id: "onion", quantity: 1, unit: "whole" },
-      { id: "garlic_clove", quantity: 4, unit: "cloves" },
-      { id: "vegetable_broth", quantity: 1500, unit: "ml" },
-      { id: "cumin", quantity: 2, unit: "tsp" },
-      { id: "olive_oil", quantity: 2, unit: "tbsp" },
-    ],
+    recipe_name: "Hearty Lentil Soup",
+    ingredients: {
+      "lentils": { "g": 500 },
+      "carrot": { "whole": 2 },
+      "celery_stalk": { "stalks": 2 },
+      "onion": { "whole": 1 },
+      "garlic_clove": { "cloves": 4 },
+      "vegetable_broth": { "ml": 1500 },
+      "cumin": { "tsp": 2 },
+      "olive_oil": { "tbsp": 2 },
+    },
   },
   {
     id: "recipe-4",
-    name: "Simple Chicken and Rice",
-    ingredients: [
-      { id: "chicken_breast", quantity: 2, unit: "breasts" },
-      { id: "white_rice", quantity: 300, unit: "g" },
-      { id: "salt", quantity: "to taste", unit: "" },
-      { id: "black_pepper", quantity: "to taste", unit: "" },
-    ],
+    recipe_name: "Simple Chicken and Rice",
+    ingredients: {
+      "chicken_breast": { "breasts": 2 },
+      "white_rice": { "g": 300 },
+      "salt": { "to taste": "" },
+      "black_pepper": { "to taste": "" },
+    },
   },
 ];
 
-const EditRecipePage: React.FC = () => {
+const NewRecipePage: React.FC = () => {
   const router = useRouter();
   // @ts-ignore
   const params = useParams();
@@ -79,34 +67,39 @@ const EditRecipePage: React.FC = () => {
 
   const recipe = recipes.find((r) => r.id === recipeId);
 
-  const [ingredients, setIngredients] = useState<Ingredient[]>(
-    recipe ? recipe.ingredients.map((ing) => ({ ...ing })) : []
+  const [ingredients, setIngredients] = useState<{[ingredientId: string]: Ingredient}>(
+    recipe ? { ...recipe.ingredients } : {}
   );
 
   const handleIngredientChange = (
-    index: number,
-    field: keyof Ingredient,
+    ingId: string,
+    unit: string,
     value: string
   ) => {
-    setIngredients((ings) => {
-      const newIngs = [...ings];
-      newIngs[index] = {
-        ...newIngs[index],
-        [field]: field === "quantity" ? value : value,
-      };
+    setIngredients((prevIngs) => {
+      const newIngs = { ...prevIngs };
+      if (newIngs[ingId]) {
+        newIngs[ingId] = { ...newIngs[ingId], [unit]: value };
+      } else {
+        newIngs[ingId] = { [unit]: value };
+      }
       return newIngs;
     });
   };
 
   const addIngredientRow = () => {
-    setIngredients([
-      ...ingredients,
-      { id: "", quantity: "", unit: "" },
-    ]);
+    setIngredients((prevIngs) => ({
+      ...prevIngs,
+      [`new_ingredient_${Date.now()}`]: { "unit": "" }, // Unique ID for new ingredient
+    }));
   };
 
-  const removeIngredientRow = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
+  const removeIngredientRow = (ingIdToRemove: string) => {
+    setIngredients((prevIngs) => {
+      const newIngs = { ...prevIngs };
+      delete newIngs[ingIdToRemove];
+      return newIngs;
+    });
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -114,7 +107,7 @@ const EditRecipePage: React.FC = () => {
     // In a real app, update the backend here
     console.log({
       id: recipeId,
-      name: recipe?.name,
+      name: recipe?.recipe_name,
       ingredients,
     });
     alert("Recipe changes logged to the console! (Check your browser dev tools)");
@@ -132,46 +125,54 @@ const EditRecipePage: React.FC = () => {
       <div className="container mx-auto p-4 md:p-8 max-w-2xl">
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Edit Recipe</h1>
-          <p className="text-lg text-gray-600 mt-2">{recipe.name}</p>
+          <p className="text-lg text-gray-600 mt-2">{recipe.recipe_name}</p>
         </header>
         <form onSubmit={handleSave} className="bg-white p-6 md:p-8 rounded-xl shadow-md space-y-6">
           <div className="space-y-4">
             <h2 className="text-lg font-medium text-gray-700 border-b pb-2">Ingredients</h2>
-            {ingredients.map((ingredient, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                <input
-                  type="text"
-                  value={ingredient.id}
-                  onChange={(e) => handleIngredientChange(index, "id", e.target.value)}
-                  className="md:col-span-4 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Ingredient ID"
-                  required
-                />
-                <input
-                  type="text"
-                  value={ingredient.quantity}
-                  onChange={(e) => handleIngredientChange(index, "quantity", e.target.value)}
-                  className="md:col-span-3 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Qty"
-                  required
-                />
-                <input
-                  type="text"
-                  value={ingredient.unit}
-                  onChange={(e) => handleIngredientChange(index, "unit", e.target.value)}
-                  className="md:col-span-3 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Unit"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeIngredientRow(index)}
-                  className="md:col-span-2 text-red-500 hover:text-red-700 flex justify-center items-center p-2 rounded-md hover:bg-red-100 transition-colors"
-                  aria-label="Remove ingredient"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
+            {Object.entries(ingredients).map(([ingId, quantityMap]) => {
+              const firstEntry = Object.entries(quantityMap)[0];
+              const unit = firstEntry ? firstEntry[0] : ''; // Default to empty string if no unit
+              const quantity = firstEntry ? firstEntry[1] : ''; // Default to empty string if no quantity
+              return (
+                <div key={ingId} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                  <input
+                    type="text"
+                    value={ingId.replace(/_/g, ' ')}
+                    onChange={(e) => {
+                      // For simplicity, we are not allowing direct editing of ingId (key) here.
+                      // A more robust solution would involve adding a new ingredient and deleting the old one.
+                    }}
+                    className="md:col-span-4 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Ingredient Name"
+                    readOnly // Make it read-only for now as changing key is complex
+                  />
+                  <input
+                    type="text"
+                    value={String(quantity)}
+                    onChange={(e) => handleIngredientChange(ingId, unit, e.target.value)}
+                    className="md:col-span-3 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Qty"
+                    required
+                  />
+                  <input
+                    type="text"
+                    value={unit}
+                    onChange={(e) => handleIngredientChange(ingId, e.target.value, String(quantity))}
+                    className="md:col-span-3 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Unit"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeIngredientRow(ingId)}
+                    className="md:col-span-2 text-red-500 hover:text-red-700 flex justify-center items-center p-2 rounded-md hover:bg-red-100 transition-colors"
+                    aria-label="Remove ingredient"
+                  >
+                    Remove
+                  </button>
+                </div>
+              );
+            })}
             <button
               type="button"
               onClick={addIngredientRow}
@@ -201,4 +202,4 @@ const EditRecipePage: React.FC = () => {
   );
 };
 
-export default EditRecipePage;
+export default NewRecipePage;

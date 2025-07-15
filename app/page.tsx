@@ -2,70 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import Fridge from './components/Fridge';
-
-// --- TYPE DEFINITIONS ---
-interface IngredientInfo {
-    name: string;
-}
-
-interface Ingredient {
-    id: string;
-    quantity: number | string;
-    unit: string;
-}
-
-interface Recipe {
-    id: string;
-    name: string;
-    ingredients: Ingredient[];
-}
-
-interface ShoppingListItem {
-    name: string;
-    amountStr: string;
-}
-
-interface ShoppingListType {
-    inFridge: ShoppingListItem[];
-    notInFridge: ShoppingListItem[];
-}
-
-interface AggregatedIngredient {
-    [unit: string]: number | string;
-}
-
-interface AggregatedIngredients {
-    [ingredientId: string]: AggregatedIngredient;
-}
-
+import { Ingredient, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredient, AggregatedIngredients } from '@/lib/types';
 
 // --- DATABASE (Embedded for prototype) ---
 // This data now conforms to the types defined above.
 const recipes: Recipe[] = [
-    { "id": "recipe-1", "name": "Spaghetti Bolognese", "ingredients": [
-        { "id": "ground_beef", "quantity": 500, "unit": "g" }, { "id": "onion", "quantity": 1, "unit": "whole" }, { "id": "garlic_clove", "quantity": 3, "unit": "cloves" }, { "id": "canned_tomatoes", "quantity": 800, "unit": "g" }, { "id": "spaghetti_pasta", "quantity": 400, "unit": "g" }, { "id": "olive_oil", "quantity": 2, "unit": "tbsp" }, { "id": "oregano", "quantity": 1, "unit": "tsp" }
-    ]},
-    { "id": "recipe-2", "name": "Chicken Stir-Fry", "ingredients": [
-        { "id": "chicken_breast", "quantity": 2, "unit": "breasts" }, { "id": "broccoli_head", "quantity": 1, "unit": "head" }, { "id": "onion", "quantity": 1, "unit": "whole" }, { "id": "garlic_clove", "quantity": 2, "unit": "cloves" }, { "id": "soy_sauce", "quantity": 4, "unit": "tbsp" }, { "id": "ginger", "quantity": 1, "unit": "inch piece" }, { "id": "white_rice", "quantity": 300, "unit": "g" }, { "id": "olive_oil", "quantity": 1, "unit": "tbsp" }
-    ]},
-    { "id": "recipe-3", "name": "Hearty Lentil Soup", "ingredients": [
-        { "id": "lentils", "quantity": 500, "unit": "g" }, { "id": "carrot", "quantity": 2, "unit": "whole" }, { "id": "celery_stalk", "quantity": 2, "unit": "stalks" }, { "id": "onion", "quantity": 1, "unit": "whole" }, { "id": "garlic_clove", "quantity": 4, "unit": "cloves" }, { "id": "vegetable_broth", "quantity": 1500, "unit": "ml" }, { "id": "cumin", "quantity": 2, "unit": "tsp" }, { "id": "olive_oil", "quantity": 2, "unit": "tbsp" }
-    ]},
-    { "id": "recipe-4", "name": "Simple Chicken and Rice", "ingredients": [
-        { "id": "chicken_breast", "quantity": 2, "unit": "breasts" }, { "id": "white_rice", "quantity": 300, "unit": "g" }, { "id": "salt", "quantity": "to taste", "unit": "" }, { "id": "black_pepper", "quantity": "to taste", "unit": "" }
-    ]}
-  ];
+    { id: 'recipe-1', recipe_name: 'Spaghetti Bolognese', ingredients: {
+        'ground_beef' : {'g': 500}, 'onion' : {'whole': 1}, 'garlic_clove' : {'cloves': 3}
+    }}
+];
 
 // Fridge mock data (copied from Fridge.tsx)
-const initialFridgeContents = [
-    { id: 1, name: 'Olive Oil', quantity: 1, unit: 'bottle' },
-    { id: 2, name: 'Soy Sauce', quantity: 1, unit: 'bottle' },
-    { id: 3, name: 'Salt', quantity: 1, unit: 'shaker' },
-    { id: 4, name: 'Black Pepper', quantity: 1, unit: 'grinder' },
-    { id: 5, name: 'Onion', quantity: 2, unit: 'whole' },
-    { id: 6, name: 'Garlic Clove', quantity: 5, unit: 'cloves' },
-    { id: 7, name: 'Chicken Breast', quantity: 1, unit: 'breasts' },
-];
+const initialFridgeContents: { [ingredientId: string]: Ingredient } = {
+    'olive_oil' : {'bottle' : 1},
+    'soy_sauce' : {'bottle' : 1},
+    'salt' : {'shaker' : 1},
+    'black_pepper' : {'grinder' : 1},
+    'onion' : {'whole' : 2},
+    'garlic_clove' : {'clove' : 5},
+    'chicken_breast' : {'breast' : 1}
+};
 
 // --- Helper Icons ---
 const ShoppingCartIcon: React.FC = () => (
@@ -144,7 +100,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle })
                 onClick={() => onToggle(recipe.id)}
                 aria-pressed={isSelected}
             >
-                {recipe.name}
+                {recipe.recipe_name}
             </button>
             <button
                 id={`expand-btn-${recipe.id}`}
@@ -169,9 +125,9 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle })
                 >
                     <div className="font-semibold mb-2 text-gray-900">Ingredients</div>
                     <ul className="list-disc pl-5 text-gray-800 text-sm">
-                        {recipe.ingredients.map(ing => (
-                            <li key={ing.id}>
-                                {ing.id}: {ing.quantity} {ing.unit}
+                        {Object.entries(recipe.ingredients).map(([ingId, quantityMap]) => (
+                            <li key={ingId}>
+                                {ingId.replace(/_/g, ' ')}: {Object.entries(quantityMap).map(([unit, qty]) => `${qty} ${unit}`).join(', ')}
                             </li>
                         ))}
                     </ul>
@@ -230,7 +186,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
 const App: React.FC = () => {
     const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
     const [shoppingList, setShoppingList] = useState<ShoppingListType | null>(null);
-    const [fridgeItems, setFridgeItems] = useState(initialFridgeContents);
+    const [fridgeItems, setFridgeItems] = useState<{ [ingredientId: string]: Ingredient }>(initialFridgeContents);
 
     // Compute aggregated usage for selected recipes
     const [aggregatedUsage, setAggregatedUsage] = useState<AggregatedIngredients>({});
@@ -251,34 +207,41 @@ const App: React.FC = () => {
         const recipesToMake = recipes.filter(r => selectedRecipeIds.has(r.id));
         const aggregated: AggregatedIngredients = {};
         recipesToMake.forEach(recipe => {
-            recipe.ingredients.forEach(ingredient => {
-                const { id, quantity, unit } = ingredient;
-                if (!aggregated[id]) aggregated[id] = {};
-                if (!aggregated[id][unit]) aggregated[id][unit] = 0;
-                if (typeof quantity === 'number' && typeof aggregated[id][unit] === 'number') {
-                    (aggregated[id][unit] as number) += quantity;
-                } else {
-                    aggregated[id][unit] = quantity;
+            for (const ingId in recipe.ingredients) {
+                const quantityMap = recipe.ingredients[ingId];
+                if (!aggregated[ingId]) aggregated[ingId] = {};
+                for (const unit in quantityMap) {
+                    const quantity = quantityMap[unit];
+                    if (!aggregated[ingId][unit]) aggregated[ingId][unit] = 0;
+                    if (typeof quantity === 'number' && typeof aggregated[ingId][unit] === 'number') {
+                        (aggregated[ingId][unit] as number) += quantity;
+                    } else {
+                        aggregated[ingId][unit] = quantity;
+                    }
                 }
-            });
+            }
         });
         setAggregatedUsage(aggregated);
         const inFridge: ShoppingListItem[] = [];
         const notInFridge: ShoppingListItem[] = [];
-        
-        
 
         for (const ingId in aggregated) {
             const amounts = aggregated[ingId];
             const amountStr = Object.entries(amounts).map(([unit, qty]) => `${qty} ${unit}`).join(', ');
             const itemDetails: ShoppingListItem = { name: ingId.replace(/_/g, ' '), amountStr };
             // Check if in fridge (case-insensitive match)
-            const inFridgeItem = fridgeItems.find(f => f.name.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase());
+            const inFridgeItem = Object.keys(fridgeItems).find(fridgeIngId => fridgeIngId.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase());
             if (inFridgeItem) {
-                inFridge.push(itemDetails);
-                //여기 수정해야함함
-                if (inFridgeItem.quantity < Number(Object.values(amounts)[0]))
-                    console.log (amounts, '부족족')
+                const fridgeQuantityMap = fridgeItems[inFridgeItem];
+                // For simplicity, assuming the first unit found is the primary one for comparison
+                const neededQuantity = Number(Object.values(amounts)[0]);
+                const availableQuantity = Number(Object.values(fridgeQuantityMap)[0]);
+
+                if (availableQuantity < neededQuantity) {
+                    notInFridge.push(itemDetails); // If not enough in fridge, it's something to buy
+                } else {
+                    inFridge.push(itemDetails);
+                }
             } else {
                 notInFridge.push(itemDetails);
             }

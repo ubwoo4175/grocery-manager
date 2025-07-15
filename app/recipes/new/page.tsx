@@ -1,14 +1,14 @@
 'use client'
 
 import React, { useState } from 'react';
+import { Ingredient } from '@/lib/types';
 
 // --- TYPE DEFINITIONS ---
-interface NewIngredient {
-    id: number; // for unique key prop
-    name: string;
+interface NewIngredientRow {
+    tempId: number; // for unique key prop in the UI
+    ingredientId: string;
     quantity: string; // Use string to handle empty form inputs
     unit: string;
-    type: 'consumable' | 'reusable';
 }
 
 // --- ICONS ---
@@ -28,34 +28,43 @@ const TrashIcon: React.FC = () => (
 // --- Main Component ---
 const AddNewRecipePage: React.FC = () => {
     const [recipeName, setRecipeName] = useState<string>('');
-    const [ingredients, setIngredients] = useState<NewIngredient[]>([
-        { id: 1, name: '', quantity: '', unit: '', type: 'consumable' }
+    const [ingredientsRows, setIngredientsRows] = useState<NewIngredientRow[]>([
+        { tempId: 1, ingredientId: '', quantity: '', unit: '' }
     ]);
 
-    const handleIngredientChange = (index: number, field: keyof Omit<NewIngredient, 'id'>, value: string) => {
-        const newIngredients = [...ingredients];
-        newIngredients[index] = { ...newIngredients[index], [field]: value };
-        setIngredients(newIngredients);
+    const handleIngredientChange = (index: number, field: keyof Omit<NewIngredientRow, 'tempId'>, value: string) => {
+        const newIngredientsRows = [...ingredientsRows];
+        newIngredientsRows[index] = { ...newIngredientsRows[index], [field]: value };
+        setIngredientsRows(newIngredientsRows);
     };
 
     const addIngredientRow = () => {
-        setIngredients([
-            ...ingredients,
-            { id: Date.now(), name: '', quantity: '', unit: '', type: 'consumable' } // Use timestamp for unique id
+        setIngredientsRows([
+            ...ingredientsRows,
+            { tempId: Date.now(), ingredientId: '', quantity: '', unit: '' } // Use timestamp for unique id
         ]);
     };
 
-    const removeIngredientRow = (id: number) => {
-        setIngredients(ingredients.filter(ing => ing.id !== id));
+    const removeIngredientRow = (tempId: number) => {
+        setIngredientsRows(ingredientsRows.filter(ing => ing.tempId !== tempId));
     };
 
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault();
-        // In a real app, you would send this data to your backend/Supabase.
-        // For now, we just log it to the console.
+
+        const formattedIngredients: { [ingredientId: string]: Ingredient } = {};
+        ingredientsRows.forEach(row => {
+            if (row.ingredientId.trim() && row.quantity.trim() && row.unit.trim()) {
+                const normalizedIngredientId = row.ingredientId.trim().toLowerCase().replace(/ /g, '_');
+                formattedIngredients[normalizedIngredientId] = {
+                    [row.unit.trim().toLowerCase()]: parseFloat(row.quantity) || row.quantity // Keep string if not a valid number
+                };
+            }
+        });
+        
         console.log({
             recipeName,
-            ingredients
+            ingredients: formattedIngredients
         });
         alert('Recipe data logged to the console! (Check your browser dev tools)');
     };
@@ -86,42 +95,35 @@ const AddNewRecipePage: React.FC = () => {
                     {/* Ingredients Section */}
                     <div className="space-y-4">
                         <h2 className="text-lg font-medium text-gray-700 border-b pb-2">Ingredients</h2>
-                        {ingredients.map((ingredient, index) => (
-                            <div key={ingredient.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                        {ingredientsRows.map((ingredientRow, index) => (
+                            <div key={ingredientRow.tempId} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                                 <input
                                     type="text"
-                                    value={ingredient.name}
-                                    onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+                                    value={ingredientRow.ingredientId}
+                                    onChange={(e) => handleIngredientChange(index, 'ingredientId', e.target.value)}
                                     className="md:col-span-4 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="Ingredient Name"
+                                    placeholder="Ingredient ID (e.g., ground_beef)"
                                     required
                                 />
                                 <input
-                                    type="text" // text to allow for fractions e.g. "0.5"
-                                    value={ingredient.quantity}
+                                    type="text"
+                                    value={ingredientRow.quantity}
                                     onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)}
                                     className="md:col-span-2 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="Qty"
+                                    placeholder="Qty (e.g., 500)"
                                     required
                                 />
                                 <input
                                     type="text"
-                                    value={ingredient.unit}
+                                    value={ingredientRow.unit}
                                     onChange={(e) => handleIngredientChange(index, 'unit', e.target.value)}
                                     className="md:col-span-2 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="Unit"
+                                    placeholder="Unit (e.g., g, whole)"
+                                    required
                                 />
-                                <select
-                                    value={ingredient.type}
-                                    onChange={(e) => handleIngredientChange(index, 'type', e.target.value)}
-                                    className="md:col-span-3 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                >
-                                    <option value="consumable">Consumable</option>
-                                    <option value="reusable">Reusable</option>
-                                </select>
                                 <button
                                     type="button"
-                                    onClick={() => removeIngredientRow(ingredient.id)}
+                                    onClick={() => removeIngredientRow(ingredientRow.tempId)}
                                     className="md:col-span-1 text-red-500 hover:text-red-700 flex justify-center items-center p-2 rounded-md hover:bg-red-100 transition-colors"
                                     aria-label="Remove ingredient"
                                 >

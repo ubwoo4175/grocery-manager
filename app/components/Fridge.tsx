@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
+import { Ingredient, AggregatedIngredients } from '../../lib/types';
 
 // --- TYPE DEFINITIONS ---
-interface FridgeItem {
-    id: number; // Use ID for stable key and editing
+interface FridgeItemDisplay {
+    id: string; // Use ingredient ID as stable key
     name: string;
-    quantity: number;
+    quantity: number | string;
     unit: string;
 }
 
-type EditableField = 'name' | 'quantity' | 'unit';
+type EditableField = 'quantity' | 'unit'; // Name is now the key, not editable via this
 
 // --- ICONS ---
 const RefrigeratorIcon: React.FC = () => (
@@ -34,20 +35,20 @@ const RightArrowIcon: React.FC = () => (
 );
 
 // --- INITIAL MOCK DATA ---
-const initialFridgeContents: FridgeItem[] = [
-    { id: 1, name: 'Olive Oil', quantity: 1, unit: 'bottle' },
-    { id: 2, name: 'Soy Sauce', quantity: 1, unit: 'bottle' },
-    { id: 3, name: 'Salt', quantity: 1, unit: 'shaker' },
-    { id: 4, name: 'Black Pepper', quantity: 1, unit: 'grinder' },
-    { id: 5, name: 'Onion', quantity: 2, unit: 'whole' },
-    { id: 6, name: 'Garlic Clove', quantity: 5, unit: 'cloves' },
-    { id: 7, name: 'Chicken Breast', quantity: 1, unit: 'breasts' },
-];
+// const initialFridgeContents: FridgeItem[] = [
+//     { id: 1, name: 'Olive Oil', quantity: 1, unit: 'bottle' },
+//     { id: 2, name: 'Soy Sauce', quantity: 1, unit: 'bottle' },
+//     { id: 3, name: 'Salt', quantity: 1, unit: 'shaker' },
+//     { id: 4, name: 'Black Pepper', quantity: 1, unit: 'grinder' },
+//     { id: 5, name: 'Onion', quantity: 2, unit: 'whole' },
+//     { id: 6, name: 'Garlic Clove', quantity: 5, unit: 'cloves' },
+//     { id: 7, name: 'Chicken Breast', quantity: 1, unit: 'breasts' },
+// ];
 
 interface FridgeProps {
-    items: FridgeItem[];
-    setItems: React.Dispatch<React.SetStateAction<FridgeItem[]>>;
-    aggregatedUsage: { [ingredientId: string]: { [unit: string]: number | string } };
+    items: { [ingredientId: string]: Ingredient };
+    setItems: React.Dispatch<React.SetStateAction<{ [ingredientId: string]: Ingredient }>>;
+    aggregatedUsage: AggregatedIngredients;
     recipes: any;
 }
 
@@ -57,43 +58,40 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
     const [newItemUnit, setNewItemUnit] = useState('');
     
     // State to track the specific field being edited
-    const [editingField, setEditingField] = useState<{ id: number; field: EditableField } | null>(null);
+    const [editingField, setEditingField] = useState<{ id: string; field: EditableField } | null>(null); // Changed id to string
     const [editingValue, setEditingValue] = useState('');
 
     const handleAddItem = (e: React.FormEvent) => {
         e.preventDefault();
-        if (newItemName.trim() && newItemQty.trim()) {
-            const newItem: FridgeItem = {
-                id: Date.now(),
-                name: newItemName.trim(),
-                quantity: parseFloat(newItemQty),
-                unit: newItemUnit.trim()
-            };
-            setItems([...items, newItem]);
+        if (newItemName.trim() && newItemQty.trim() && newItemUnit.trim()) {
+            const normalizedName = newItemName.trim().toLowerCase().replace(/ /g, '_');
+            const newQuantity = parseFloat(newItemQty);
+            const newUnit = newItemUnit.trim().toLowerCase();
+
+            setItems(prevItems => ({
+                ...prevItems,
+                [normalizedName]: {
+                    ...(prevItems[normalizedName] || {}),
+                    [newUnit]: newQuantity
+                }
+            }));
             setNewItemName('');
             setNewItemQty('');
             setNewItemUnit('');
         }
     };
 
-    const handleDeleteItem = (id: number) => {
-        setItems(items.filter(item => item.id !== id));
+    const handleDeleteItem = (ingIdToDelete: string) => {
+        setItems(prevItems => {
+            const newItems = { ...prevItems };
+            delete newItems[ingIdToDelete];
+            return newItems;
+        });
     };
     
-    const handleStartEdit = (item: FridgeItem, field: EditableField) => {
-        setEditingField({ id: item.id, field });
-        // Set the initial value for the input based on the field clicked
-        switch (field) {
-            case 'name':
-                setEditingValue(item.name);
-                break;
-            case 'quantity':
-                setEditingValue(String(item.quantity));
-                break;
-            case 'unit':
-                setEditingValue(item.unit);
-                break;
-        }
+    const handleStartEdit = (ingId: string, unit: string, field: EditableField, value: string) => {
+        setEditingField({ id: ingId, field });
+        setEditingValue(value);
     };
 
     const handleCancelEdit = () => {
@@ -104,24 +102,32 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
     const handleSaveEdit = () => {
         if (!editingField) return;
         
-        setItems(items.map(item => {
-            if (item.id === editingField.id) {
-                const updatedItem = { ...item };
-                switch (editingField.field) {
-                    case 'name':
-                        updatedItem.name = editingValue.trim() || 'Unnamed Item';
-                        break;
-                    case 'quantity':
-                        updatedItem.quantity = parseFloat(editingValue) || 0;
-                        break;
-                    case 'unit':
-                        updatedItem.unit = editingValue.trim();
-                        break;
+        const { id: editingIngId, field: editingFieldType } = editingField;
+        setItems(prevItems => {
+            const newItems = { ...prevItems };
+            const currentIngredient = newItems[editingIngId];
+
+            if (currentIngredient) {
+                if (editingFieldType === 'quantity') {
+                    // Assuming we are editing the first unit found or a specific one
+                    const unitKey = Object.keys(currentIngredient)[0]; // Simplistic: takes first unit
+                    if (unitKey) {
+                        currentIngredient[unitKey] = parseFloat(editingValue) || 0;
+                    }
+                } else if (editingFieldType === 'unit') {
+                    // This is more complex, might require re-structuring the ingredient if the unit changes
+                    // For now, let's assume direct replacement for simplicity or flag as an area for more robust handling
+                    const oldUnitKey = Object.keys(currentIngredient)[0];
+                    if (oldUnitKey && oldUnitKey !== editingValue) {
+                        const oldQuantity = currentIngredient[oldUnitKey];
+                        delete currentIngredient[oldUnitKey];
+                        currentIngredient[editingValue.trim().toLowerCase()] = oldQuantity;
+                    }
                 }
-                return updatedItem;
+                newItems[editingIngId] = { ...currentIngredient }; // Ensure immutability for React
             }
-            return item;
-        }));
+            return newItems;
+        });
 
         handleCancelEdit();
     };
@@ -151,47 +157,34 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
             
             {/* Item List */}
             <ul className="grid grid-cols-12 gap-2 space-y-1 mb-4">
-                {items.map((item) => {
+                {Object.entries(items).map(([ingId, quantityMap]) => {
+                    const itemName = ingId.replace(/_/g, ' ');
+                    const [unit, quantity] = Object.entries(quantityMap)[0]; // Assuming one unit per ingredient for simplicity
+
                     // Find usage for this item (case-insensitive match)
-                    const usageEntry = Object.entries(aggregatedUsage).find(([ingId, unitMap]) => {
-                        // Try to match by name (case-insensitive)
-                        return (
-                            item.name.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase()
-                        );
-                    });
-                    let usedQty: number | null = null;
+                    const usageEntry = aggregatedUsage[ingId];
+                    let usedQty: number | string | null = null;
                     let usedUnit = '';
+
                     if (usageEntry) {
-                        const [ingId, unitMap] = usageEntry;
-                        // Try to match by unit (case-insensitive)
-                        const unitMatch = Object.entries(unitMap).find(([unit, qty]) => unit.toLowerCase() === item.unit.toLowerCase());
-                        if (unitMatch && typeof unitMatch[1] === 'number') {
-                            usedQty = unitMatch[1] as number;
+                        const unitMatch = Object.entries(usageEntry).find(([u]) => u.toLowerCase() === unit.toLowerCase());
+                        if (unitMatch) {
+                            usedQty = unitMatch[1];
                             usedUnit = unitMatch[0];
                         }
                     }
-                    const remaining = usedQty !== null ? item.quantity - usedQty : item.quantity;
+                    
+                    const remaining = typeof quantity === 'number' && typeof usedQty === 'number' ? quantity - usedQty : quantity;
+
                     return (
-                        <li key={item.id} className="col-span-12 grid grid-cols-12 gap-2 items-center p-1 rounded-md hover:bg-gray-50 group">
-                            {/* Name Field */}
+                        <li key={ingId} className="col-span-12 grid grid-cols-12 gap-2 items-center p-1 rounded-md hover:bg-gray-50 group">
+                            {/* Name Field - Not directly editable here as it's the key */}
                             <div className="col-span-5">
-                                {editingField?.id === item.id && editingField?.field === 'name' ? (
-                                    <input 
-                                        type="text"
-                                        value={editingValue}
-                                        onChange={(e) => setEditingValue(e.target.value)}
-                                        onBlur={handleSaveEdit}
-                                        onKeyDown={handleEditKeyDown}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                        autoFocus
-                                    />
-                                ) : (
-                                    <span className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors" onClick={() => handleStartEdit(item, 'name')}>{item.name}</span>
-                                )}
+                                <span className="block w-full px-3 py-2 text-gray-600">{itemName}</span>
                             </div>  
                             {/* Quantity and Unit Fields (Amount Left) */}
                             <div className="col-span-3">
-                                {editingField?.id === item.id && editingField?.field === 'quantity' ? (
+                                {editingField?.id === ingId && editingField?.field === 'quantity' ? (
                                     <input 
                                         type="number"
                                         step="0.1"
@@ -203,17 +196,17 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                                         autoFocus
                                     />
                                 ) : (
-                                    <span className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors" onClick={() => handleStartEdit(item, 'quantity')}>{item.quantity} {item.unit}</span>
+                                    <span className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors" onClick={() => handleStartEdit(ingId, unit, 'quantity', String(quantity))}>{quantity} {unit}</span>
                                 )}
                             </div>
                             {/* You Need Field */}
                             <div className="col-span-3">
-                                <span className={`block w-full px-3 py-2 rounded-md ${usedQty !== null && usedQty > item.quantity ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : ''}
+                                <span className={`block w-full px-3 py-2 rounded-md ${typeof remaining === 'number' && remaining < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : 'N/A'}
                                 </span>
                             </div>
                             <div className="col-span-1 flex justify-end pr-2">
-                                <button onClick={() => handleDeleteItem(item.id)} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity">
+                                <button onClick={() => handleDeleteItem(ingId)} className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity">
                                         <TrashIcon />
                                 </button>
                             </div>
@@ -222,7 +215,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                 })}
             </ul>
             
-             {items.length === 0 && (
+             {Object.keys(items).length === 0 && (
                 <p className="text-gray-500 text-center py-4">Your fridge is empty. Add an item below.</p>
             )}
 
@@ -239,8 +232,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                         required
                      />
                      <input 
-                        type="number"
-                        step="0.1"
+                        type="text" // Changed to text to allow non-numeric input for quantity if needed
                         value={newItemQty}
                         onChange={(e) => setNewItemQty(e.target.value)}
                         placeholder="Qty"
@@ -253,6 +245,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                         onChange={(e) => setNewItemUnit(e.target.value)}
                         placeholder="Unit"
                         className="col-span-8 md:col-span-3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        required
                      />
                      <button type="submit" className="col-span-12 md:col-span-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center">
                          <PlusIcon />
