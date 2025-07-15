@@ -209,7 +209,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                             {/* You Need Field */}
                             <div className="col-span-3">
                                 <span className={`block w-full px-3 py-2 rounded-md ${usedQty !== null && usedQty > item.quantity ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : 'N/A'}
+                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : ''}
                                 </span>
                             </div>
                             <div className="col-span-1 flex justify-end pr-2">
