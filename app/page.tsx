@@ -41,32 +41,7 @@ interface AggregatedIngredients {
 
 // --- DATABASE (Embedded for prototype) ---
 // This data now conforms to the types defined above.
-const database: {
-    ingredients_info: { [key: string]: IngredientInfo };
-    recipes: Recipe[];
-} = {
-  "ingredients_info": {
-    "ground_beef": { "name": "Ground Beef" },
-    "onion": { "name": "Onion" },
-    "garlic_clove": { "name": "Garlic Clove" },
-    "canned_tomatoes": { "name": "Canned Tomatoes" },
-    "spaghetti_pasta": { "name": "Spaghetti Pasta" },
-    "chicken_breast": { "name": "Chicken Breast" },
-    "broccoli_head": { "name": "Broccoli Head" },
-    "white_rice": { "name": "White Rice" },
-    "lentils": { "name": "Dried Lentils" },
-    "carrot": { "name": "Carrot" },
-    "celery_stalk": { "name": "Celery Stalk" },
-    "vegetable_broth": { "name": "Vegetable Broth" },
-    "olive_oil": { "name": "Olive Oil" },
-    "oregano": { "name": "Dried Oregano" },
-    "soy_sauce": { "name": "Soy Sauce" },
-    "ginger": { "name": "Ginger" },
-    "cumin": { "name": "Cumin Powder" },
-    "salt": { "name": "Salt" },
-    "black_pepper": { "name": "Black Pepper" }
-  },
-  "recipes": [
+const recipes: Recipe[] = [
     { "id": "recipe-1", "name": "Spaghetti Bolognese", "ingredients": [
         { "id": "ground_beef", "quantity": 500, "unit": "g" }, { "id": "onion", "quantity": 1, "unit": "whole" }, { "id": "garlic_clove", "quantity": 3, "unit": "cloves" }, { "id": "canned_tomatoes", "quantity": 800, "unit": "g" }, { "id": "spaghetti_pasta", "quantity": 400, "unit": "g" }, { "id": "olive_oil", "quantity": 2, "unit": "tbsp" }, { "id": "oregano", "quantity": 1, "unit": "tsp" }
     ]},
@@ -79,8 +54,7 @@ const database: {
     { "id": "recipe-4", "name": "Simple Chicken and Rice", "ingredients": [
         { "id": "chicken_breast", "quantity": 2, "unit": "breasts" }, { "id": "white_rice", "quantity": 300, "unit": "g" }, { "id": "salt", "quantity": "to taste", "unit": "" }, { "id": "black_pepper", "quantity": "to taste", "unit": "" }
     ]}
-  ]
-};
+  ];
 
 // Fridge mock data (copied from Fridge.tsx)
 const initialFridgeContents = [
@@ -197,7 +171,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle })
                     <ul className="list-disc pl-5 text-gray-800 text-sm">
                         {recipe.ingredients.map(ing => (
                             <li key={ing.id}>
-                                {database.ingredients_info[ing.id]?.name || ing.id}: {ing.quantity} {ing.unit}
+                                {ing.id}: {ing.quantity} {ing.unit}
                             </li>
                         ))}
                     </ul>
@@ -274,7 +248,7 @@ const App: React.FC = () => {
     };
 
     useEffect(() => {
-        const recipesToMake = database.recipes.filter(r => selectedRecipeIds.has(r.id));
+        const recipesToMake = recipes.filter(r => selectedRecipeIds.has(r.id));
         const aggregated: AggregatedIngredients = {};
         recipesToMake.forEach(recipe => {
             recipe.ingredients.forEach(ingredient => {
@@ -291,19 +265,20 @@ const App: React.FC = () => {
         setAggregatedUsage(aggregated);
         const inFridge: ShoppingListItem[] = [];
         const notInFridge: ShoppingListItem[] = [];
+        
+        
+
         for (const ingId in aggregated) {
-            const info = database.ingredients_info[ingId];
-            if (!info) continue;
             const amounts = aggregated[ingId];
-            console.log(amounts)
             const amountStr = Object.entries(amounts).map(([unit, qty]) => `${qty} ${unit}`).join(', ');
-            const itemDetails: ShoppingListItem = { name: info.name, amountStr };
+            const itemDetails: ShoppingListItem = { name: ingId.replace(/_/g, ' '), amountStr };
             // Check if in fridge (case-insensitive match)
-            const inFridgeMatch = fridgeItems.some(f => f.name.toLowerCase() === info.name.toLowerCase());
-            if (inFridgeMatch) {
-                console.log(inFridgeMatch)
+            const inFridgeItem = fridgeItems.find(f => f.name.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase());
+            if (inFridgeItem) {
                 inFridge.push(itemDetails);
                 //여기 수정해야함함
+                if (inFridgeItem.quantity < Number(Object.values(amounts)[0]))
+                    console.log (amounts, '부족족')
             } else {
                 notInFridge.push(itemDetails);
             }
@@ -325,7 +300,7 @@ const App: React.FC = () => {
                         <div className="bg-white p-6 rounded-xl shadow-md mb-8">
                             <h2 className="text-2xl font-semibold mb-4 border-b pb-2">1. Choose Your Recipes</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {database.recipes.map(recipe => (
+                                {recipes.map(recipe => (
                                     <RecipeCard 
                                         key={recipe.id}
                                         recipe={recipe}
@@ -351,7 +326,7 @@ const App: React.FC = () => {
                     {/* Right side, Fridge */}
                     <div>
                         <div className="mt-8 lg:mt-0">
-                            <Fridge items={fridgeItems} setItems={setFridgeItems} aggregatedUsage={aggregatedUsage} database={database} />
+                            <Fridge items={fridgeItems} setItems={setFridgeItems} aggregatedUsage={aggregatedUsage} recipes={recipes} />
                         </div>
                     </div>
                 </div>

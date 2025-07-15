@@ -17,61 +17,59 @@ interface Recipe {
 }
 
 // --- Mock database (copied from homepage) ---
-const database: { recipes: Recipe[] } = {
-  recipes: [
-    {
-      id: "recipe-1",
-      name: "Spaghetti Bolognese",
-      ingredients: [
-        { id: "ground_beef", quantity: 500, unit: "g" },
-        { id: "onion", quantity: 1, unit: "whole" },
-        { id: "garlic_clove", quantity: 3, unit: "cloves" },
-        { id: "canned_tomatoes", quantity: 800, unit: "g" },
-        { id: "spaghetti_pasta", quantity: 400, unit: "g" },
-        { id: "olive_oil", quantity: 2, unit: "tbsp" },
-        { id: "oregano", quantity: 1, unit: "tsp" },
-      ],
-    },
-    {
-      id: "recipe-2",
-      name: "Chicken Stir-Fry",
-      ingredients: [
-        { id: "chicken_breast", quantity: 2, unit: "breasts" },
-        { id: "broccoli_head", quantity: 1, unit: "head" },
-        { id: "onion", quantity: 1, unit: "whole" },
-        { id: "garlic_clove", quantity: 2, unit: "cloves" },
-        { id: "soy_sauce", quantity: 4, unit: "tbsp" },
-        { id: "ginger", quantity: 1, unit: "inch piece" },
-        { id: "white_rice", quantity: 300, unit: "g" },
-        { id: "olive_oil", quantity: 1, unit: "tbsp" },
-      ],
-    },
-    {
-      id: "recipe-3",
-      name: "Hearty Lentil Soup",
-      ingredients: [
-        { id: "lentils", quantity: 500, unit: "g" },
-        { id: "carrot", quantity: 2, unit: "whole" },
-        { id: "celery_stalk", quantity: 2, unit: "stalks" },
-        { id: "onion", quantity: 1, unit: "whole" },
-        { id: "garlic_clove", quantity: 4, unit: "cloves" },
-        { id: "vegetable_broth", quantity: 1500, unit: "ml" },
-        { id: "cumin", quantity: 2, unit: "tsp" },
-        { id: "olive_oil", quantity: 2, unit: "tbsp" },
-      ],
-    },
-    {
-      id: "recipe-4",
-      name: "Simple Chicken and Rice",
-      ingredients: [
-        { id: "chicken_breast", quantity: 2, unit: "breasts" },
-        { id: "white_rice", quantity: 300, unit: "g" },
-        { id: "salt", quantity: "to taste", unit: "" },
-        { id: "black_pepper", quantity: "to taste", unit: "" },
-      ],
-    },
-  ],
-};
+const recipes: Recipe[] = [
+  {
+    id: "recipe-1",
+    name: "Spaghetti Bolognese",
+    ingredients: [
+      { id: "ground_beef", quantity: 500, unit: "g" },
+      { id: "onion", quantity: 1, unit: "whole" },
+      { id: "garlic_clove", quantity: 3, unit: "cloves" },
+      { id: "canned_tomatoes", quantity: 800, unit: "g" },
+      { id: "spaghetti_pasta", quantity: 400, unit: "g" },
+      { id: "olive_oil", quantity: 2, unit: "tbsp" },
+      { id: "oregano", quantity: 1, unit: "tsp" },
+    ],
+  },
+  {
+    id: "recipe-2",
+    name: "Chicken Stir-Fry",
+    ingredients: [
+      { id: "chicken_breast", quantity: 2, unit: "breasts" },
+      { id: "broccoli_head", quantity: 1, unit: "head" },
+      { id: "onion", quantity: 1, unit: "whole" },
+      { id: "garlic_clove", quantity: 2, unit: "cloves" },
+      { id: "soy_sauce", quantity: 4, unit: "tbsp" },
+      { id: "ginger", quantity: 1, unit: "inch piece" },
+      { id: "white_rice", quantity: 300, unit: "g" },
+      { id: "olive_oil", quantity: 1, unit: "tbsp" },
+    ],
+  },
+  {
+    id: "recipe-3",
+    name: "Hearty Lentil Soup",
+    ingredients: [
+      { id: "lentils", quantity: 500, unit: "g" },
+      { id: "carrot", quantity: 2, unit: "whole" },
+      { id: "celery_stalk", quantity: 2, unit: "stalks" },
+      { id: "onion", quantity: 1, unit: "whole" },
+      { id: "garlic_clove", quantity: 4, unit: "cloves" },
+      { id: "vegetable_broth", quantity: 1500, unit: "ml" },
+      { id: "cumin", quantity: 2, unit: "tsp" },
+      { id: "olive_oil", quantity: 2, unit: "tbsp" },
+    ],
+  },
+  {
+    id: "recipe-4",
+    name: "Simple Chicken and Rice",
+    ingredients: [
+      { id: "chicken_breast", quantity: 2, unit: "breasts" },
+      { id: "white_rice", quantity: 300, unit: "g" },
+      { id: "salt", quantity: "to taste", unit: "" },
+      { id: "black_pepper", quantity: "to taste", unit: "" },
+    ],
+  },
+];
 
 const EditRecipePage: React.FC = () => {
   const router = useRouter();
@@ -79,7 +77,7 @@ const EditRecipePage: React.FC = () => {
   const params = useParams();
   const recipeId = params?.id as string;
 
-  const recipe = database.recipes.find((r) => r.id === recipeId);
+  const recipe = recipes.find((r) => r.id === recipeId);
 
   const [ingredients, setIngredients] = useState<Ingredient[]>(
     recipe ? recipe.ingredients.map((ing) => ({ ...ing })) : []

@@ -48,10 +48,10 @@ interface FridgeProps {
     items: FridgeItem[];
     setItems: React.Dispatch<React.SetStateAction<FridgeItem[]>>;
     aggregatedUsage: { [ingredientId: string]: { [unit: string]: number | string } };
-    database: any;
+    recipes: any;
 }
 
-const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, database }) => {
+const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recipes }) => {
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState('');
     const [newItemUnit, setNewItemUnit] = useState('');
@@ -156,8 +156,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, datab
                     const usageEntry = Object.entries(aggregatedUsage).find(([ingId, unitMap]) => {
                         // Try to match by name (case-insensitive)
                         return (
-                            item.name.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase() ||
-                            item.name.toLowerCase() === database.ingredients_info[ingId]?.name?.toLowerCase()
+                            item.name.toLowerCase() === ingId.replace(/_/g, ' ').toLowerCase()
                         );
                     });
                     let usedQty: number | null = null;

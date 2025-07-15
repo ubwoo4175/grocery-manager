@@ -1,4 +1,8 @@
-import React from 'react';
+import Link from "next/link";
+import React from "react";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import NavItems from "./NavItems";
+
 
 // --- ICONS ---
 const ChefHatIcon: React.FC = () => (
@@ -10,22 +14,28 @@ const ChefHatIcon: React.FC = () => (
 
 const Navbar: React.FC = () => {
     return (
-        <nav className="bg-white shadow-md sticky top-0 z-50">
-            <div className="container mx-auto px-4 md:px-8 max-w-4xl">
-                <div className="flex items-center justify-between h-16">
-                    <a href="/" className="flex items-center space-x-3 text-gray-800 hover:text-blue-600 transition-colors">
+        <nav className="navbar">
+            <div className="col-span-1">
+                <Link href="/">
+                    <div className="flex items-center gap-2.5 cursor-pointer">
                         <ChefHatIcon />
-                        <span className="text-xl font-bold">Grocery Manager</span>
-                    </a>
-                    {/* You can add more nav links here in the future */}
-                    <div>
-                        <a href="/recipes/new" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">
-                            Add Recipe
-                        </a>
                     </div>
-                </div>
+                </Link>
             </div>
-        </nav>
+            <div className="justify-self-center">
+                <NavItems />
+            </div>
+            <div className="justify-self-end flex items-center gap-8">
+                <SignedOut>
+                    <SignInButton>
+                        <button className="btn-signin">Sign In</button>
+                    </SignInButton>
+                </SignedOut>
+                <SignedIn>
+                    <UserButton />
+                </SignedIn>
+            </div>
+        </nav> 
     );
 };
 

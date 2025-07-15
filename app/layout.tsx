@@ -1,28 +1,32 @@
-import React from 'react';
-import Navbar from './components/Navbar'; // Make sure the path is correct
-import './globals.css'; // Assuming you have a global CSS file for Tailwind
+import type { Metadata } from "next";
+import { Bricolage_Grotesque } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import "./globals.css";
+import Navbar from "./components/Navbar";
 
-// This is the root layout for your entire application.
-// The `children` prop will be the content of your pages.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+});
 
-export const metadata = {
-  title: 'Recipe Ingredient Manager',
-  description: 'Manage your recipe ingredients with ease.',
+export const metadata: Metadata = {
+  title: "Grocery Manager",
+  description: "Manage your shopping list based on your selected recipes and fridge",
 };
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-800">
-        <Navbar />
-        <main>
+      <body className={`${bricolage.variable} antialiased`}>
+        <ClerkProvider appearance={{ variables: { colorPrimary: '#fe5933' }} }>
+          <Navbar />
           {children}
-        </main>
+        </ClerkProvider>
       </body>
     </html>
-  )
+  );
 }
