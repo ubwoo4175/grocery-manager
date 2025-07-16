@@ -1,7 +1,9 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Ingredient } from '@/lib/types';
+import { Quantity, CreateRecipe } from '@/lib/types';
+import { createRecipe } from '@/lib/actions/recipe.actions';
+import {redirect} from "next/navigation";
 
 // --- TYPE DEFINITIONS ---
 interface NewIngredientRow {
@@ -49,10 +51,10 @@ const AddNewRecipePage: React.FC = () => {
         setIngredientsRows(ingredientsRows.filter(ing => ing.tempId !== tempId));
     };
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
 
-        const formattedIngredients: { [ingredientId: string]: Ingredient } = {};
+        const formattedIngredients: { [ingredientId: string]: Quantity } = {};
         ingredientsRows.forEach(row => {
             if (row.ingredientId.trim() && row.quantity.trim() && row.unit.trim()) {
                 const normalizedIngredientId = row.ingredientId.trim().toLowerCase().replace(/ /g, '_');
@@ -62,11 +64,18 @@ const AddNewRecipePage: React.FC = () => {
             }
         });
         
-        console.log({
-            recipeName,
-            ingredients: formattedIngredients
-        });
         alert('Recipe data logged to the console! (Check your browser dev tools)');
+
+        const newRecipe = await createRecipe({ recipe_name: recipeName, ingredients: formattedIngredients });
+        if(newRecipe) {
+            alert('Recipe created successfully!');
+            // Redirect or clear form as needed
+            setRecipeName('');
+            setIngredientsRows([{ tempId: 1, ingredientId: '', quantity: '', unit: '' }]);
+        } else {
+            console.error('Failed to create recipe');
+            redirect('/');
+        }
     };
 
     return (

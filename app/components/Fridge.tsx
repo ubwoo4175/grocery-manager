@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Ingredient, AggregatedIngredients } from '../../lib/types';
+import { Quantity, AggregatedIngredients } from '../../lib/types';
 
 // --- TYPE DEFINITIONS ---
 interface FridgeItemDisplay {
@@ -46,8 +46,8 @@ const RightArrowIcon: React.FC = () => (
 // ];
 
 interface FridgeProps {
-    items: { [ingredientId: string]: Ingredient };
-    setItems: React.Dispatch<React.SetStateAction<{ [ingredientId: string]: Ingredient }>>;
+    items: { [ingredientId: string]: Quantity };
+    setItems: React.Dispatch<React.SetStateAction<{ [ingredientId: string]: Quantity }>>;
     aggregatedUsage: AggregatedIngredients;
     recipes: any;
 }

@@ -2,18 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Fridge from './components/Fridge';
-import { Ingredient, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredient, AggregatedIngredients } from '@/lib/types';
+import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredient, AggregatedIngredients } from '@/lib/types';
+import { getUserFridge, getUserRecipes } from '@/lib/actions/recipe.actions';
 
 // --- DATABASE (Embedded for prototype) ---
 // This data now conforms to the types defined above.
-const recipes: Recipe[] = [
-    { id: 'recipe-1', recipe_name: 'Spaghetti Bolognese', ingredients: {
-        'ground_beef' : {'g': 500}, 'onion' : {'whole': 1}, 'garlic_clove' : {'cloves': 3}
-    }}
-];
+
 
 // Fridge mock data (copied from Fridge.tsx)
-const initialFridgeContents: { [ingredientId: string]: Ingredient } = {
+const initialFridgeContents: { [ingredientId: string]: Quantity } = {
     'olive_oil' : {'bottle' : 1},
     'soy_sauce' : {'bottle' : 1},
     'salt' : {'shaker' : 1},
@@ -43,9 +40,13 @@ const PlusIcon: React.FC = () => (
     </svg>
 );
 
-
-
+const recipes: Recipe[] = [
+    { id: 'recipe-1', recipe_name: 'Spaghetti Bolognese', ingredients: {
+        'ground_beef' : {'g': 500}, 'onion' : {'whole': 1}, 'garlic_clove' : {'cloves': 3}
+    }}
+];
 // --- Child Components ---
+
 
 interface RecipeCardProps {
     recipe: Recipe;
@@ -183,10 +184,55 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
 
 // --- Main App Component ---
 
-const App: React.FC = () => {
+const App = () => {
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [fridgeItems, setFridgeItems] = useState<{ [ingredientId: string]: Quantity }>({});
+
+    useEffect(() => {
+        const fetchRecipes = async () => {
+            const fetchedRecipes = await getUserRecipes();
+            if (fetchedRecipes) {
+                setRecipes(fetchedRecipes as Recipe[]);
+            }
+        };
+
+        const fetchFridgeContents = async () => {
+            const fetchedFridgeContents = await getUserFridge();
+            if (fetchedFridgeContents) {
+                const transformedFridge: { [ingredientId: string]: Quantity } = {};
+                if (Array.isArray(fetchedFridgeContents)) {
+                    fetchedFridgeContents.forEach(fridgeEntry => {
+                        if (fridgeEntry.ingredients) {
+                            for (const ingredientId in fridgeEntry.ingredients) {
+                                const quantityMap = fridgeEntry.ingredients[ingredientId];
+                                if (!transformedFridge[ingredientId]) {
+                                    transformedFridge[ingredientId] = {};
+                                }
+                                for (const unit in quantityMap) {
+                                    const quantity = quantityMap[unit];
+                                    if (!transformedFridge[ingredientId][unit]) {
+                                        transformedFridge[ingredientId][unit] = 0;
+                                    }
+                                    if (typeof quantity === 'number' && typeof transformedFridge[ingredientId][unit] === 'number') {
+                                        (transformedFridge[ingredientId][unit] as number) += quantity;
+                                    } else {
+                                        transformedFridge[ingredientId][unit] = quantity;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                setFridgeItems(transformedFridge);
+            }
+        };
+
+        fetchRecipes();
+        fetchFridgeContents();
+    }, []);
+
     const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
     const [shoppingList, setShoppingList] = useState<ShoppingListType | null>(null);
-    const [fridgeItems, setFridgeItems] = useState<{ [ingredientId: string]: Ingredient }>(initialFridgeContents);
 
     // Compute aggregated usage for selected recipes
     const [aggregatedUsage, setAggregatedUsage] = useState<AggregatedIngredients>({});

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Ingredient, Recipe } from '@/lib/types';
+import { Quantity, Recipe } from '@/lib/types';
 
 // --- Mock database (copied from homepage) ---
 const recipes: Recipe[] = [
@@ -67,7 +67,7 @@ const NewRecipePage: React.FC = () => {
 
   const recipe = recipes.find((r) => r.id === recipeId);
 
-  const [ingredients, setIngredients] = useState<{[ingredientId: string]: Ingredient}>(
+  const [ingredients, setIngredients] = useState<{[ingredientId: string]: Quantity}>(
     recipe ? { ...recipe.ingredients } : {}
   );
 

@@ -1,11 +1,11 @@
-export interface Ingredient {
+export interface Quantity {
     [unit: string]: number | string;
 }
 
 export interface Recipe {
     id: string;
     recipe_name: string;
-    ingredients: { [ingredientId: string]: Ingredient };
+    ingredients: { [ingredientId: string]: Quantity };
 }
 
 export interface ShoppingListItem {
@@ -26,7 +26,7 @@ export interface AggregatedIngredients {
     [ingredientId: string]: AggregatedIngredient;
 } 
 
-interface CreateRecipe {
+export interface CreateRecipe {
     recipe_name: string;
-    ingredients: JsonWebKey;
-  }
+    ingredients: { [ingredientId: string]: Quantity };
+}
