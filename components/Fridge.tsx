@@ -1,5 +1,8 @@
+'use client'
+
 import React, { useState } from 'react';
-import { Quantity, AggregatedIngredients } from '../../lib/types';
+import { Quantity, AggregatedIngredients } from '../lib/types';
+import { upsertFridge, getUserFridge } from '@/lib/actions/recipe.actions';
 
 // --- TYPE DEFINITIONS ---
 interface FridgeItemDisplay {
@@ -34,25 +37,13 @@ const RightArrowIcon: React.FC = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block align-middle mx-1"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
 );
 
-// --- INITIAL MOCK DATA ---
-// const initialFridgeContents: FridgeItem[] = [
-//     { id: 1, name: 'Olive Oil', quantity: 1, unit: 'bottle' },
-//     { id: 2, name: 'Soy Sauce', quantity: 1, unit: 'bottle' },
-//     { id: 3, name: 'Salt', quantity: 1, unit: 'shaker' },
-//     { id: 4, name: 'Black Pepper', quantity: 1, unit: 'grinder' },
-//     { id: 5, name: 'Onion', quantity: 2, unit: 'whole' },
-//     { id: 6, name: 'Garlic Clove', quantity: 5, unit: 'cloves' },
-//     { id: 7, name: 'Chicken Breast', quantity: 1, unit: 'breasts' },
-// ];
-
 interface FridgeProps {
     items: { [ingredientId: string]: Quantity };
     setItems: React.Dispatch<React.SetStateAction<{ [ingredientId: string]: Quantity }>>;
     aggregatedUsage: AggregatedIngredients;
-    recipes: any;
 }
 
-const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recipes }) => {
+const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage }) => {
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState('');
     const [newItemUnit, setNewItemUnit] = useState('');
@@ -162,7 +153,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                     const [unit, quantity] = Object.entries(quantityMap)[0]; // Assuming one unit per ingredient for simplicity
 
                     // Find usage for this item (case-insensitive match)
-                    const usageEntry = aggregatedUsage[ingId];
+                    const usageEntry = aggregatedUsage![ingId];
                     let usedQty: number | string | null = null;
                     let usedUnit = '';
 
@@ -202,7 +193,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                             {/* You Need Field */}
                             <div className="col-span-3">
                                 <span className={`block w-full px-3 py-2 rounded-md ${typeof remaining === 'number' && remaining < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : 'N/A'}
+                                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : ''}
                                 </span>
                             </div>
                             <div className="col-span-1 flex justify-end pr-2">
@@ -210,6 +201,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                                         <TrashIcon />
                                 </button>
                             </div>
+
                         </li>
                     );
                 })}
@@ -251,6 +243,23 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage, recip
                          <PlusIcon />
                      </button>
                  </form>
+            </div>
+            <div className="mt-4 pt-4 border-t flex justify-end">
+                <button 
+                    type="button"
+                    onClick={async () => {
+                        try {
+                            await upsertFridge({ ingredients: items });
+                            alert('Fridge contents saved successfully!');
+                        } catch (error) {
+                            console.error('Failed to save fridge contents:', error);
+                            alert('Failed to save fridge contents.');
+                        }
+                    }}
+                    className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all"
+                >
+                    Save Fridge
+                </button>
             </div>
         </div>
     );

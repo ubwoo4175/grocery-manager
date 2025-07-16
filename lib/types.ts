@@ -30,3 +30,7 @@ export interface CreateRecipe {
     recipe_name: string;
     ingredients: { [ingredientId: string]: Quantity };
 }
+
+export interface CreateFridge {
+    ingredients: { [ingredientId: string]: Quantity };
+}

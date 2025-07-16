@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import Fridge from './components/Fridge';
+import Fridge from '../components/Fridge';
 import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredient, AggregatedIngredients } from '@/lib/types';
 import { getUserFridge, getUserRecipes } from '@/lib/actions/recipe.actions';
 
@@ -10,15 +10,15 @@ import { getUserFridge, getUserRecipes } from '@/lib/actions/recipe.actions';
 
 
 // Fridge mock data (copied from Fridge.tsx)
-const initialFridgeContents: { [ingredientId: string]: Quantity } = {
-    'olive_oil' : {'bottle' : 1},
-    'soy_sauce' : {'bottle' : 1},
-    'salt' : {'shaker' : 1},
-    'black_pepper' : {'grinder' : 1},
-    'onion' : {'whole' : 2},
-    'garlic_clove' : {'clove' : 5},
-    'chicken_breast' : {'breast' : 1}
-};
+// const initialFridgeContents: { [ingredientId: string]: Quantity } = {
+//     'olive_oil' : {'bottle' : 1},
+//     'soy_sauce' : {'bottle' : 1},
+//     'salt' : {'shaker' : 1},
+//     'black_pepper' : {'grinder' : 1},
+//     'onion' : {'whole' : 2},
+//     'garlic_clove' : {'clove' : 5},
+//     'chicken_breast' : {'breast' : 1}
+// };
 
 // --- Helper Icons ---
 const ShoppingCartIcon: React.FC = () => (
@@ -335,7 +335,7 @@ const App = () => {
                     {/* Right side, Fridge */}
                     <div>
                         <div className="mt-8 lg:mt-0">
-                            <Fridge items={fridgeItems} setItems={setFridgeItems} aggregatedUsage={aggregatedUsage} recipes={recipes} />
+                            <Fridge items={fridgeItems} setItems={setFridgeItems} aggregatedUsage={aggregatedUsage} />
                         </div>
                     </div>
                 </div>

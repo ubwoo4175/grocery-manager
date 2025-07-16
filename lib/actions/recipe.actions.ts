@@ -2,7 +2,8 @@
 
 import {auth} from "@clerk/nextjs/server";
 import { createSupabaseClient } from "@/lib/supabase";
-import { CreateRecipe } from "@/lib/types";
+import { CreateRecipe, CreateFridge } from "@/lib/types";
+import { revalidatePath } from "next/cache";
 
 export const createRecipe = async (formData: CreateRecipe) => {
     const { userId: user_id } = await auth();
@@ -37,6 +38,23 @@ export const getUserRecipes = async () => {
     return data;
 }
 
+export const upsertFridge = async (formData: CreateFridge) => {
+    const { userId: user_id } = await auth();
+    const supabase = createSupabaseClient();
+
+    const { data, error } = await supabase
+        .from('Fridge')
+        .upsert({...formData, user_id }, { onConflict: 'user_id' })
+        .select();
+
+    if(error || !data) throw new Error(error?.message || 'Failed to upsert fridge');
+
+    console.log(data)
+    revalidatePath('/');
+    return data[0];
+}
+
+
 export const getUserFridge = async () => {
     const { userId: user_id } = await auth();
     const supabase = createSupabaseClient();
@@ -54,3 +72,4 @@ export const getUserFridge = async () => {
     console.log("Fetched fridge contents:", data);
     return data;
 }
+
