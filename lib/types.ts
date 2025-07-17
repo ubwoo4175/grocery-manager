@@ -2,6 +2,10 @@ export interface Quantity {
     [unit: string]: number | string;
 }
 
+export interface FridgeItems {
+    [ingredientId: string]: Quantity;
+}
+
 export interface Recipe {
     id: string;
     recipe_name: string;

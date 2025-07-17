@@ -61,7 +61,7 @@ export const getUserFridge = async () => {
 
     const { data, error } = await supabase
         .from('Fridge')
-        .select()
+        .select('id, ingredients')
         .eq('user_id', user_id);
 
     if(error) {
