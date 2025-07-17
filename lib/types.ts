@@ -31,6 +31,6 @@ export interface CreateRecipe {
     ingredients: { [ingredientId: string]: Quantity };
 }
 
-export interface CreateFridge {
+export interface UpsertFridge {
     ingredients: { [ingredientId: string]: Quantity };
 }

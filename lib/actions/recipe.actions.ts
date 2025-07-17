@@ -2,7 +2,7 @@
 
 import {auth} from "@clerk/nextjs/server";
 import { createSupabaseClient } from "@/lib/supabase";
-import { CreateRecipe, CreateFridge } from "@/lib/types";
+import { CreateRecipe, UpsertFridge } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 export const createRecipe = async (formData: CreateRecipe) => {
@@ -38,7 +38,7 @@ export const getUserRecipes = async () => {
     return data;
 }
 
-export const upsertFridge = async (formData: CreateFridge) => {
+export const upsertFridge = async (formData: UpsertFridge) => {
     const { userId: user_id } = await auth();
     const supabase = createSupabaseClient();
 
@@ -61,7 +61,7 @@ export const getUserFridge = async () => {
 
     const { data, error } = await supabase
         .from('Fridge')
-        .select('id, ingredients')
+        .select()
         .eq('user_id', user_id);
 
     if(error) {

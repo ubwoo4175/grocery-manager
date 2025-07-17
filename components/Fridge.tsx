@@ -131,6 +131,19 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage }) => 
         }
     };
 
+    const handleSaveFridge = async () => {
+        console.log(items)
+
+        const updatedItems = await upsertFridge({ ingredients: items });
+
+        if(updatedItems) {
+            alert('Fridge udserted successfully!')
+        } else {
+            console.error('Failed to upsert fridge')
+        }
+        
+    }
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-md h-fit sticky top-24">
             <h2 className="text-2xl font-semibold mb-4 border-b pb-2 flex items-center">
@@ -247,15 +260,7 @@ const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage }) => 
             <div className="mt-4 pt-4 border-t flex justify-end">
                 <button 
                     type="button"
-                    onClick={async () => {
-                        try {
-                            await upsertFridge({ ingredients: items });
-                            alert('Fridge contents saved successfully!');
-                        } catch (error) {
-                            console.error('Failed to save fridge contents:', error);
-                            alert('Failed to save fridge contents.');
-                        }
-                    }}
+                    onClick={handleSaveFridge}
                     className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all"
                 >
                     Save Fridge
