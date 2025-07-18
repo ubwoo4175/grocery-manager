@@ -1,5 +1,5 @@
 export interface Quantity {
-    [unit: string]: number | string;
+    [unit: string]: number;
 }
 
 export interface FridgeItems {
@@ -23,7 +23,7 @@ export interface ShoppingListType {
 }
 
 export interface AggregatedIngredient {
-    [unit: string]: number | string;
+    [unit: string]: number;
 }
 
 export interface AggregatedIngredients {

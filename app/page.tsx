@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Fridge from "../components/Fridge";
 import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredient, AggregatedIngredients } from "@/lib/types";
 import { getUserFridge, getUserRecipes } from "@/lib/actions/recipe.actions";
-import { compareQuantity } from "@/lib/utils";
 
 // --- DATABASE (Embedded for prototype) ---
 // This data now conforms to the types defined above.
@@ -32,7 +31,7 @@ const ShoppingCartIcon: React.FC = () => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="inline-block h-6 w-6 mr-2"
+    className="inline-block h-6 w-6 mr-2" 
   >
     <circle cx="9" cy="21" r="1"></circle>
     <circle cx="20" cy="21" r="1"></circle>
@@ -344,20 +343,45 @@ const App = () => {
 
     for (const ingId in aggregated) {
       const amounts = aggregated[ingId];
+      console.log(amounts)
       // Check if in fridge (case-insensitive match)
       const inFridgeItem = Object.keys(fridgeItems).find((fridgeIngId) => fridgeIngId.toLowerCase() === ingId.replace(/_/g, " ").toLowerCase());
       if (inFridgeItem) {
-        const comparedQuantity = compareQuantity(amounts, fridgeItems[inFridgeItem]);
+        const needUnit = Object.keys(amounts)[0];
+        const needValue = Object.values(amounts)[0];
+        const haveUnit = Object.keys(fridgeItems[inFridgeItem])[0];
+        const haveValue = Object.values(fridgeItems[inFridgeItem])[0];
+
+        if (needUnit === haveUnit) {
+          if (needValue <= haveValue) {
+            console.log('needValue <= haveValue')
+            inFridge.push({
+              name: ingId,
+              amountStr: `${needValue} ${haveUnit}`
+            })
+          } 
+          else {
+            notInFridge.push({
+              name: ingId, 
+              amountStr: `${needValue-haveValue} ${needUnit}`
+            })
+            inFridge.push({
+              name: ingId,
+              amountStr: `${haveValue} ${haveUnit}`
+            })
+
+          }
+        } else {
+          inFridge.push({
+            name: ingId,
+            amountStr: `${haveValue} ${haveUnit} -> (you need) ${needValue} ${needUnit}`
+          })
+        }
+      }
+      else {
         notInFridge.push({
           name: ingId,
-          amountStr: Object.entries(comparedQuantity[0])
-            .map(([unit, qty]) => `${qty} ${unit}`)
-            .join(", "),
-        });
-
-        inFridge.push({
-          name: ingId,
-          amountStr: Object.entries(comparedQuantity[1])
+          amountStr: Object.entries(aggregated[ingId])
             .map(([unit, qty]) => `${qty} ${unit}`)
             .join(", "),
         });
