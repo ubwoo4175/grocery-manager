@@ -1,71 +1,21 @@
-"use client";
-
-import React, { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import React from "react";
+import { redirect } from "next/navigation";
+import { getUserRecipe } from "@/lib/actions/recipe.actions"
 import { Quantity, Recipe } from '@/lib/types';
+import { currentUser } from "@clerk/nextjs/server";
 
-// --- Mock database (copied from homepage) ---
-const recipes: Recipe[] = [
-  {
-    id: "recipe-1",
-    recipe_name: "Spaghetti Bolognese",
-    ingredients: {
-      "ground_beef": { "g": 500 },
-      "onion": { "whole": 1 },
-      "garlic_clove": { "cloves": 3 },
-      "canned_tomatoes": { "g": 800 },
-      "spaghetti_pasta": { "g": 400 },
-      "olive_oil": { "tbsp": 2 },
-      "oregano": { "tsp": 1 },
-    },
-  },
-  {
-    id: "recipe-2",
-    recipe_name: "Chicken Stir-Fry",
-    ingredients: {
-      "chicken_breast": { "breasts": 2 },
-      "broccoli_head": { "head": 1 },
-      "onion": { "whole": 1 },
-      "garlic_clove": { "cloves": 2 },
-      "soy_sauce": { "tbsp": 4 },
-      "ginger": { "inch piece": 1 },
-      "white_rice": { "g": 300 },
-      "olive_oil": { "tbsp": 1 },
-    },
-  },
-  {
-    id: "recipe-3",
-    recipe_name: "Hearty Lentil Soup",
-    ingredients: {
-      "lentils": { "g": 500 },
-      "carrot": { "whole": 2 },
-      "celery_stalk": { "stalks": 2 },
-      "onion": { "whole": 1 },
-      "garlic_clove": { "cloves": 4 },
-      "vegetable_broth": { "ml": 1500 },
-      "cumin": { "tsp": 2 },
-      "olive_oil": { "tbsp": 2 },
-    },
-  },
-  {
-    id: "recipe-4",
-    recipe_name: "Simple Chicken and Rice",
-    ingredients: {
-      "chicken_breast": { "breasts": 2 },
-      "white_rice": { "g": 300 },
-      "salt": { "to taste": "" },
-      "black_pepper": { "to taste": "" },
-    },
-  },
-];
+interface RecipePageProps {
+  params: Promise<{ id: string }>;
+}
 
-const NewRecipePage: React.FC = () => {
-  const router = useRouter();
-  // @ts-ignore
-  const params = useParams();
-  const recipeId = params?.id as string;
+const RecipePage = async ({ params }: RecipePageProps) => {
+  const { id } = await params;
 
-  const recipe = recipes.find((r) => r.id === recipeId);
+  const recipe = await getUserRecipe(id);
+  const user = await currentUser();
+
+  if(!user) redirect('/sign-in');
+  if(!recipe) redirect('/recipes')
 
   const [ingredients, setIngredients] = useState<{[ingredientId: string]: Quantity}>(
     recipe ? { ...recipe.ingredients } : {}
@@ -111,7 +61,6 @@ const NewRecipePage: React.FC = () => {
       ingredients,
     });
     alert("Recipe changes logged to the console! (Check your browser dev tools)");
-    router.push("/");
   };
 
   if (!recipe) {
@@ -184,7 +133,6 @@ const NewRecipePage: React.FC = () => {
           <div className="flex justify-end pt-4 border-t space-x-4">
             <button
               type="button"
-              onClick={() => router.push("/")}
               className="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all"
             >
               Cancel
@@ -202,4 +150,4 @@ const NewRecipePage: React.FC = () => {
   );
 };
 
-export default NewRecipePage;
+export default RecipePage;

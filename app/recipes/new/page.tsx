@@ -59,7 +59,7 @@ const AddNewRecipePage: React.FC = () => {
             if (row.ingredientId.trim() && row.quantity.trim() && row.unit.trim()) {
                 const normalizedIngredientId = row.ingredientId.trim().toLowerCase().replace(/ /g, '_');
                 formattedIngredients[normalizedIngredientId] = {
-                    [row.unit.trim().toLowerCase()]: parseFloat(row.quantity) || row.quantity // Keep string if not a valid number
+                    [row.unit.trim().toLowerCase()]: parseFloat(row.quantity) // Keep string if not a valid number
                 };
             }
         });

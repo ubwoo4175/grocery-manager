@@ -38,6 +38,25 @@ export const getUserRecipes = async () => {
     return data;
 }
 
+export const getUserRecipe = async (id: string) => {
+    const { userId: user_id } = await auth();
+    const supabase = createSupabaseClient();
+
+    const { data, error } = await supabase
+        .from('Recipes')
+        .select('id, recipe_name, ingredients')
+        .eq('user_id', user_id)
+        .eq('id', id);
+
+    if(error) {
+        console.error("Error fetching user recipes:", error);
+        return []; // Return an empty array on error
+    }
+
+    console.log("Fetched recipe:", data);
+    return data[0];
+}
+
 export const upsertFridge = async (formData: UpsertFridge) => {
     const { userId: user_id } = await auth();
     const supabase = createSupabaseClient();
@@ -53,7 +72,6 @@ export const upsertFridge = async (formData: UpsertFridge) => {
     revalidatePath('/');
     return data[0];
 }
-
 
 export const getUserFridge = async () => {
     const { userId: user_id } = await auth();
