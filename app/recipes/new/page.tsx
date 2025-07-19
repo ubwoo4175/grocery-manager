@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Quantity, CreateRecipe } from '@/lib/types';
-import { createRecipe } from '@/lib/actions/recipe.actions';
+import { Quantity, UpsertRecipe } from '@/lib/types';
+import { upsertRecipe } from '@/lib/actions/recipe.actions';
 import {redirect} from "next/navigation";
 
 // --- TYPE DEFINITIONS ---
@@ -66,7 +66,7 @@ const AddNewRecipePage: React.FC = () => {
         
         alert('Recipe data logged to the console! (Check your browser dev tools)');
 
-        const newRecipe = await createRecipe({ recipe_name: recipeName, ingredients: formattedIngredients });
+        const newRecipe = await upsertRecipe({ recipe_name: recipeName, ingredients: formattedIngredients });
         if(newRecipe) {
             alert('Recipe created successfully!');
             // Redirect or clear form as needed

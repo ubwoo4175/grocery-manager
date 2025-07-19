@@ -30,7 +30,7 @@ export interface AggregatedIngredients {
     [ingredientId: string]: AggregatedIngredient;
 } 
 
-export interface CreateRecipe {
+export interface UpsertRecipe {
     recipe_name: string;
     ingredients: { [ingredientId: string]: Quantity };
 }
