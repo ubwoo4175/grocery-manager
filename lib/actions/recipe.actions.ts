@@ -5,6 +5,8 @@ import { createSupabaseClient } from "@/lib/supabase";
 import { UpsertRecipe, UpsertFridge } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
+// ... (keep your existing functions: upsertRecipe, getUserRecipes, etc.)
+
 export const upsertRecipe = async (formData: UpsertRecipe & { id?: string }) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
@@ -80,4 +82,32 @@ export const upsertFridge = async (formData: UpsertFridge) => {
   console.log(data);
   revalidatePath("/");
   return data[0];
+};
+
+export const checkRecipeNameExists = async (recipeName: string, recipeIdToExclude?: string): Promise<boolean> => {
+  const { userId: user_id } = await auth();
+  if (!user_id) {
+    throw new Error("User not authenticated.");
+  }
+  const supabase = createSupabaseClient();
+
+  let query = supabase
+    .from("Recipes")
+    .select("id")
+    .eq("user_id", user_id)
+    .ilike("recipe_name", recipeName.trim());
+  
+  if (recipeIdToExclude) {
+    query = query.neq("id", recipeIdToExclude);
+  }
+
+  const { data, error } = await query.limit(1);
+
+  if (error) {
+    console.error("Error checking for recipe name:", error);
+    // Decide how to handle the error, maybe return true to be safe
+    return true; 
+  }
+
+  return data.length > 0;
 };
