@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getUserRecipe, upsertRecipe } from "@/lib/actions/recipe.actions";
-import { Quantity, Recipe } from '@/lib/types';
+import { Quantity, Recipe } from "@/lib/types";
 import { useUser } from "@clerk/nextjs";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,35 +17,40 @@ import { Button } from "@/components/ui/button";
 interface IngredientDisplayItem {
   id: string; // A unique client-side ID for stable rendering
   name: string;
-  quantity: Quantity;
+  quantity: number;
+  unit: string;
 }
 
 // Zod schema for a single ingredient item
 const IngredientSchema = z.object({
   id: z.string(), // Client-side stable ID
-  name: z.string().min(1, "Ingredient name is required.").transform(name => name.trim().toLowerCase().replace(/\s+/g, "_")),
-  quantity: z.record(z.string().min(1, "Unit is required."), z.number().min(0, "Quantity must be a positive number.").or(z.literal(0))),
+  name: z
+    .string()
+    .min(1, "Ingredient name is required.")
+    .transform((name) => name.trim().toLowerCase().replace(/\s+/g, "_")),
+  quantity: z.number().min(0, "Quantity must be a positive number.").or(z.literal(0)),
+  unit: z.string().min(1, "Unit is required."),
 });
 
 // Zod schema for the entire recipe form
 const RecipeFormSchema = z.object({
   recipe_name: z.string().min(1, "Recipe name is required."),
-  ingredients: z.array(IngredientSchema)
-    .min(1, "At least one ingredient is required.")
-    .superRefine((ingredients, ctx) => {
-      const uniqueNames = new Set<string>();
-      ingredients.forEach((ingredient, index) => {
-        if (uniqueNames.has(ingredient.name)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Duplicate ingredient name.",
-            path: [`ingredients`, index, `name`],
-          });
-        } else {
-          uniqueNames.add(ingredient.name);
-        }
-      });
-    }),
+  ingredients: z.array(IngredientSchema),
+  // .min(1, "At least one ingredient is required.")
+  // .superRefine((ingredients, ctx) => {
+  //   const uniqueNames = new Set<string>();
+  //   ingredients.forEach((ingredient, index) => {
+  //     if (uniqueNames.has(ingredient.name)) {
+  //       ctx.addIssue({
+  //         code: z.ZodIssueCode.custom,
+  //         message: "Duplicate ingredient name.",
+  //         path: [`ingredients`, index, `name`],
+  //       });
+  //     } else {
+  //       uniqueNames.add(ingredient.name);
+  //     }
+  //   });
+  // }),
   // Temporarily added fields for adding new ingredients (not part of the saved recipe data)
   newIngredientName: z.string().optional(),
   newIngredientQty: z.string().optional(),
@@ -104,7 +109,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
   const [loading, setLoading] = useState(true);
 
   // State to track which field is currently in editing mode
-  const [editingCell, setEditingCell] = useState<{ index: number; field: 'name' | 'quantity' | 'unit' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ index: number; field: "name" | "quantity" | "unit" } | null>(null);
 
   // Shadcn Form setup
   const form = useForm<RecipeFormValues>({
@@ -133,21 +138,22 @@ const RecipePage = ({ params }: RecipePageProps) => {
       if (!isUserLoaded) return;
 
       if (!user) {
-        router.push('/sign-in');
+        router.push("/sign-in");
         return;
       }
 
       const fetchedRecipe = await getUserRecipe(id);
       if (!fetchedRecipe) {
-        router.push('/recipes');
+        router.push("/recipes");
         return;
       }
       setRecipe(fetchedRecipe);
 
       const displayIngredients: IngredientDisplayItem[] = Object.entries(fetchedRecipe.ingredients || {}).map(([name, quantity]) => ({
-        id: name + '_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        id: name + "_" + Date.now() + Math.random().toString(36).substring(2, 9),
         name: name,
-        quantity: quantity as Quantity,
+        quantity: Object.values(quantity as Quantity)[0],
+        unit: Object.keys(quantity as Quantity)[0],
       }));
 
       form.reset({
@@ -172,9 +178,10 @@ const RecipePage = ({ params }: RecipePageProps) => {
       const newUnit = newIngredientUnit.trim().toLowerCase();
 
       const newItem: IngredientDisplayItem = {
-        id: normalizedName + '_' + Date.now() + Math.random().toString(36).substring(2, 9),
+        id: normalizedName + "_" + Date.now() + Math.random().toString(36).substring(2, 9),
         name: normalizedName,
-        quantity: { [newUnit]: newQuantity },
+        quantity: newQuantity,
+        unit: newUnit,
       };
 
       append(newItem);
@@ -198,8 +205,8 @@ const RecipePage = ({ params }: RecipePageProps) => {
     }
 
     const ingredientsForSave: { [ingredientId: string]: Quantity } = {};
-    data.ingredients.forEach(item => {
-      ingredientsForSave[item.name] = item.quantity;
+    data.ingredients.forEach((i) => {
+      ingredientsForSave[i.name] = { [i.unit]: i.quantity };
     });
 
     const updatedRecipeData = {
@@ -222,9 +229,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
   };
 
   if (loading) {
-    return (
-      <div className="p-8 text-center text-gray-600">Loading recipe...</div>
-    );
+    return <div className="p-8 text-center text-gray-600">Loading recipe...</div>;
   }
 
   if (!recipe) {
@@ -265,10 +270,9 @@ const RecipePage = ({ params }: RecipePageProps) => {
               </div>
 
               {fields.map((ingredient, index) => {
-                const [unit, quantity] = Object.entries(ingredient.quantity)[0];
-                const isEditingName = editingCell?.index === index && editingCell?.field === 'name';
-                const isEditingQuantity = editingCell?.index === index && editingCell?.field === 'quantity';
-                const isEditingUnit = editingCell?.index === index && editingCell?.field === 'unit';
+                const isEditingName = editingCell?.index === index && editingCell?.field === "name";
+                const isEditingQuantity = editingCell?.index === index && editingCell?.field === "quantity";
+                const isEditingUnit = editingCell?.index === index && editingCell?.field === "unit";
 
                 return (
                   <React.Fragment key={ingredient.id}>
@@ -293,14 +297,14 @@ const RecipePage = ({ params }: RecipePageProps) => {
                                     await form.trigger(`ingredients.${index}.name`);
                                   }}
                                   onKeyDown={async (e) => {
-                                    if (e.key === 'Enter') {
+                                    if (e.key === "Enter") {
                                       // Apply normalization on Enter key
                                       const normalizedValue = e.currentTarget.value.trim().toLowerCase().replace(/\s+/g, "_");
                                       field.onChange(normalizedValue);
                                       setEditingCell(null);
                                       await form.trigger(`ingredients.${index}.name`);
                                     }
-                                    if (e.key === 'Escape') {
+                                    if (e.key === "Escape") {
                                       setEditingCell(null);
                                       field.onChange(form.getValues(`ingredients.${index}.name`));
                                     }
@@ -310,7 +314,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
                               ) : (
                                 <span
                                   className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors"
-                                  onClick={() => setEditingCell({ index, field: 'name' })}
+                                  onClick={() => setEditingCell({ index, field: "name" })}
                                 >
                                   {field.value}
                                 </span>
@@ -324,7 +328,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
                       {/* Quantity Field */}
                       <FormField
                         control={form.control}
-                        name={`ingredients.${index}.quantity.${unit}`}
+                        name={`ingredients.${index}.quantity`}
                         render={({ field }) => (
                           <FormItem className="md:col-span-3">
                             <FormControl>
@@ -334,16 +338,16 @@ const RecipePage = ({ params }: RecipePageProps) => {
                                   type="number"
                                   onBlur={async () => {
                                     setEditingCell(null);
-                                    await form.trigger(`ingredients.${index}.quantity.${unit}`);
+                                    await form.trigger(`ingredients.${index}.quantity`);
                                   }}
                                   onKeyDown={async (e) => {
-                                    if (e.key === 'Enter') {
+                                    if (e.key === "Enter") {
                                       setEditingCell(null);
-                                      await form.trigger(`ingredients.${index}.quantity.${unit}`);
+                                      await form.trigger(`ingredients.${index}.quantity`);
                                     }
-                                    if (e.key === 'Escape') {
+                                    if (e.key === "Escape") {
                                       setEditingCell(null);
-                                      field.onChange(form.getValues(`ingredients.${index}.quantity.${unit}`));
+                                      field.onChange(form.getValues(`ingredients.${index}.quantity`));
                                     }
                                   }}
                                   autoFocus
@@ -351,7 +355,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
                               ) : (
                                 <span
                                   className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors"
-                                  onClick={() => setEditingCell({ index, field: 'quantity' })}
+                                  onClick={() => setEditingCell({ index, field: "quantity" })}
                                 >
                                   {field.value}
                                 </span>
@@ -365,7 +369,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
                       {/* Unit Field */}
                       <FormField
                         control={form.control}
-                        name={`ingredients.${index}.quantity.${unit}`}
+                        name={`ingredients.${index}.unit`}
                         render={({ field }) => (
                           <FormItem className="md:col-span-3">
                             <FormControl>
@@ -375,16 +379,16 @@ const RecipePage = ({ params }: RecipePageProps) => {
                                   type="text"
                                   onBlur={async () => {
                                     setEditingCell(null);
-                                    await form.trigger(`ingredients.${index}.quantity.${unit}`);
+                                    await form.trigger(`ingredients.${index}.unit`);
                                   }}
                                   onKeyDown={async (e) => {
-                                    if (e.key === 'Enter') {
+                                    if (e.key === "Enter") {
                                       setEditingCell(null);
-                                      await form.trigger(`ingredients.${index}.quantity.${unit}`);
+                                      await form.trigger(`ingredients.${index}.unit`);
                                     }
-                                    if (e.key === 'Escape') {
+                                    if (e.key === "Escape") {
                                       setEditingCell(null);
-                                      field.onChange(form.getValues(`ingredients.${index}.quantity.${unit}`));
+                                      field.onChange(form.getValues(`ingredients.${index}.unit`));
                                     }
                                   }}
                                   autoFocus
@@ -392,9 +396,9 @@ const RecipePage = ({ params }: RecipePageProps) => {
                               ) : (
                                 <span
                                   className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors"
-                                  onClick={() => setEditingCell({ index, field: 'unit' })}
+                                  onClick={() => setEditingCell({ index, field: "unit" })}
                                 >
-                                  {unit}
+                                  {ingredient.unit}
                                 </span>
                               )}
                             </FormControl>
@@ -454,9 +458,7 @@ const RecipePage = ({ params }: RecipePageProps) => {
               <Button type="button" variant="outline">
                 Cancel
               </Button>
-              <Button type="submit">
-                Save Recipe
-              </Button>
+              <Button type="submit">Save Recipe</Button>
             </div>
           </form>
         </Form>

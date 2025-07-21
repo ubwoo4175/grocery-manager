@@ -89,17 +89,11 @@ const RightArrowIcon: React.FC = () => (
 
 interface FridgeProps {
   items: { [ingredientId: string]: Quantity };
-  setItems: React.Dispatch<
-    React.SetStateAction<{ [ingredientId: string]: Quantity }>
-  >;
+  setItems: React.Dispatch<React.SetStateAction<{ [ingredientId: string]: Quantity }>>;
   aggregatedUsage: AggregatedIngredients;
 }
 
-const Fridge: React.FC<FridgeProps> = ({
-  items,
-  setItems,
-  aggregatedUsage,
-}) => {
+const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage }) => {
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
   const [newItemUnit, setNewItemUnit] = useState("");
@@ -114,10 +108,7 @@ const Fridge: React.FC<FridgeProps> = ({
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (newItemName.trim() && newItemQty.trim() && newItemUnit.trim()) {
-      const normalizedName = newItemName
-        .trim()
-        .toLowerCase()
-        .replace(/ /g, "_");
+      const normalizedName = newItemName.trim().toLowerCase().replace(/ /g, "_");
       const newQuantity = parseFloat(newItemQty);
       const newUnit = newItemUnit.trim().toLowerCase();
 
@@ -142,12 +133,7 @@ const Fridge: React.FC<FridgeProps> = ({
     });
   };
 
-  const handleStartEdit = (
-    ingId: string,
-    unit: string,
-    field: EditableField,
-    value: string
-  ) => {
+  const handleStartEdit = (ingId: string, unit: string, field: EditableField, value: string) => {
     setEditingField({ id: ingId, field });
     setEditingValue(value);
   };
@@ -220,17 +206,10 @@ const Fridge: React.FC<FridgeProps> = ({
 
         {/* Headers for quantity columns */}
         <div className="grid grid-cols-12 gap-2">
-          <div className="col-span-5 text-sm font-medium text-gray-600 pl-3">
-            Ingredient
-          </div>
-          <div className="col-span-3 text-sm font-medium text-gray-600 pl-3">
-            Amount left
-          </div>
-          <div className="col-span-2 text-sm font-medium text-gray-600 pl-3">
-            You need
-          </div>
-          <div className="col-span-2"></div>{" "}
-          {/* Empty column for delete button alignment */}
+          <div className="col-span-5 text-sm font-medium text-gray-600 pl-3">Ingredient</div>
+          <div className="col-span-3 text-sm font-medium text-gray-600 pl-3">Amount left</div>
+          <div className="col-span-2 text-sm font-medium text-gray-600 pl-3">You need</div>
+          <div className="col-span-2"></div> {/* Empty column for delete button alignment */}
         </div>
 
         {/* Item List */}
@@ -244,36 +223,25 @@ const Fridge: React.FC<FridgeProps> = ({
             let usedUnit = "";
 
             if (usageEntry) {
-              const unitMatch = Object.entries(usageEntry).find(
-                ([u]) => u.toLowerCase() === unit.toLowerCase()
-              );
+              const unitMatch = Object.entries(usageEntry).find(([u]) => u.toLowerCase() === unit.toLowerCase());
               if (unitMatch) {
                 usedQty = unitMatch[1];
                 usedUnit = unitMatch[0];
               }
             }
 
-            const remaining =
-              typeof quantity === "number" && typeof usedQty === "number"
-                ? quantity - usedQty
-                : quantity;
+            const remaining = typeof quantity === "number" && typeof usedQty === "number" ? quantity - usedQty : quantity;
 
             return (
-              <li
-                key={ingId}
-                className="col-span-12 grid grid-cols-12 gap-2 items-center p-1 rounded-md hover:bg-gray-50 group"
-              >
+              <li key={ingId} className="col-span-12 grid grid-cols-12 gap-2 items-center p-1 rounded-md hover:bg-gray-50 group">
                 {/* Name Field - Not directly editable here as it's the key */}
                 <div className="col-span-5">
-                  <span className="block w-full px-3 py-2 text-gray-600">
-                    {ingId}
-                  </span>
+                  <span className="block w-full px-3 py-2 text-gray-600">{ingId}</span>
                 </div>
 
                 {/* Quantity and Unit Fields (Amount Left) */}
                 <div className="col-span-3">
-                  {editingField?.id === ingId &&
-                  editingField?.field === "quantity" ? (
+                  {editingField?.id === ingId && editingField?.field === "quantity" ? (
                     <input
                       type="number"
                       step="0.1"
@@ -287,9 +255,7 @@ const Fridge: React.FC<FridgeProps> = ({
                   ) : (
                     <span
                       className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors"
-                      onClick={() =>
-                        handleStartEdit(ingId, unit, "quantity", String(quantity))
-                      }
+                      onClick={() => handleStartEdit(ingId, unit, "quantity", String(quantity))}
                     >
                       {quantity} {unit}
                     </span>
@@ -299,9 +265,7 @@ const Fridge: React.FC<FridgeProps> = ({
                 <div className="col-span-3">
                   <span
                     className={`block w-full px-3 py-2 rounded-md ${
-                      typeof remaining === "number" && remaining < 0
-                        ? "text-red-600 font-semibold"
-                        : "text-gray-600"
+                      typeof remaining === "number" && remaining < 0 ? "text-red-600 font-semibold" : "text-gray-600"
                     }`}
                   >
                     {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : ""}
@@ -320,11 +284,7 @@ const Fridge: React.FC<FridgeProps> = ({
           })}
         </ul>
 
-        {Object.keys(items).length === 0 && (
-          <p className="text-gray-500 text-center py-4">
-            Your fridge is empty. Add an item below.
-          </p>
-        )}
+        {Object.keys(items).length === 0 && <p className="text-gray-500 text-center py-4">Your fridge is empty. Add an item below.</p>}
 
         {/* Add Item Form */}
         <div className="mt-4 pt-4 border-t">
@@ -354,10 +314,7 @@ const Fridge: React.FC<FridgeProps> = ({
               className="col-span-8 md:col-span-3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               required
             />
-            <button
-              type="submit"
-              className="col-span-12 md:col-span-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
-            >
+            <button type="submit" className="col-span-12 md:col-span-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center">
               <PlusIcon />
             </button>
           </form>

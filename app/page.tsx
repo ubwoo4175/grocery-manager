@@ -31,7 +31,7 @@ const ShoppingCartIcon: React.FC = () => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="inline-block h-6 w-6 mr-2" 
+    className="inline-block h-6 w-6 mr-2"
   >
     <circle cx="9" cy="21" r="1"></circle>
     <circle cx="20" cy="21" r="1"></circle>
@@ -343,7 +343,7 @@ const App = () => {
 
     for (const ingId in aggregated) {
       const amounts = aggregated[ingId];
-      console.log(amounts)
+      console.log(amounts);
       // Check if in fridge (case-insensitive match)
       const inFridgeItem = Object.keys(fridgeItems).find((fridgeIngId) => fridgeIngId.toLowerCase() === ingId.replace(/_/g, " ").toLowerCase());
       if (inFridgeItem) {
@@ -354,31 +354,28 @@ const App = () => {
 
         if (needUnit === haveUnit) {
           if (needValue <= haveValue) {
-            console.log('needValue <= haveValue')
+            console.log("needValue <= haveValue");
             inFridge.push({
               name: ingId,
-              amountStr: `${needValue} ${haveUnit}`
-            })
-          } 
-          else {
+              amountStr: `${needValue} ${haveUnit}`,
+            });
+          } else {
             notInFridge.push({
-              name: ingId, 
-              amountStr: `${needValue-haveValue} ${needUnit}`
-            })
+              name: ingId,
+              amountStr: `${needValue - haveValue} ${needUnit}`,
+            });
             inFridge.push({
               name: ingId,
-              amountStr: `${haveValue} ${haveUnit}`
-            })
-
+              amountStr: `${haveValue} ${haveUnit}`,
+            });
           }
         } else {
           inFridge.push({
             name: ingId,
-            amountStr: `${haveValue} ${haveUnit} -> (you need) ${needValue} ${needUnit}`
-          })
+            amountStr: `${haveValue} ${haveUnit} -> (you need) ${needValue} ${needUnit}`,
+          });
         }
-      }
-      else {
+      } else {
         notInFridge.push({
           name: ingId,
           amountStr: Object.entries(aggregated[ingId])
