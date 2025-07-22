@@ -327,7 +327,6 @@ const RecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
                             type="number"
                             step="0.1"
                             placeholder="Qty"
-                            {...field}
                             value={field.value ?? ""}
                             onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
                             onKeyDown={handleKeyDown}
@@ -343,7 +342,7 @@ const RecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
                     render={({ field }) => (
                       <FormItem className="col-span-3">
                         <FormControl>
-                          <Input placeholder="Unit" {...field} onKeyDown={handleKeyDown} />
+                          <Input placeholder="Unit" {...field} value={field.value ?? ""} onKeyDown={handleKeyDown} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
