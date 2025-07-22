@@ -86,13 +86,14 @@ const RecipeSidebar = () => {
       <nav className="space-y-2">
         {recipes.map((recipe) => (
           <div key={recipe.id} className="relative">
-            <div
-              className={cn(
-                "flex items-center rounded-lg transition-colors",
-                pathname === `/recipes/${recipe.id}` ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              )}
-            >
-              <Link href={`/recipes/${recipe.id}`} className="flex-grow px-3 py-2 text-sm font-medium">
+            <div className="flex items-center rounded-lg transition-colors">
+              <Link
+                href={`/recipes/${recipe.id}`}
+                className={cn(
+                  "flex-grow px-3 py-2 rounded-l-md text-sm font-medium transition-colors",
+                  pathname === `/recipes/${recipe.id}` ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )}
+              >
                 <span className="truncate">{recipe.recipe_name}</span>
               </Link>
               <button

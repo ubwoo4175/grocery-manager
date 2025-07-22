@@ -84,19 +84,15 @@ export const upsertFridge = async (formData: UpsertFridge) => {
   return data[0];
 };
 
-export const checkRecipeNameExists = async (recipeName: string, recipeIdToExclude?: string): Promise<boolean> => {
+export const checkRecipeNameExists = async (recipeName: string, recipeIdToExclude: string | null): Promise<boolean> => {
   const { userId: user_id } = await auth();
   if (!user_id) {
     throw new Error("User not authenticated.");
   }
   const supabase = createSupabaseClient();
 
-  let query = supabase
-    .from("Recipes")
-    .select("id")
-    .eq("user_id", user_id)
-    .ilike("recipe_name", recipeName.trim());
-  
+  let query = supabase.from("Recipes").select("id").eq("user_id", user_id).ilike("recipe_name", recipeName.trim());
+
   if (recipeIdToExclude) {
     query = query.neq("id", recipeIdToExclude);
   }
@@ -106,7 +102,7 @@ export const checkRecipeNameExists = async (recipeName: string, recipeIdToExclud
   if (error) {
     console.error("Error checking for recipe name:", error);
     // Decide how to handle the error, maybe return true to be safe
-    return true; 
+    return true;
   }
 
   return data.length > 0;

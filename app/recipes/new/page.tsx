@@ -1,198 +1,344 @@
 "use client";
 
-import React, { useState } from "react";
-import { Quantity, UpsertRecipe } from "@/lib/types";
-import { upsertRecipe } from "@/lib/actions/recipe.actions";
-import { redirect } from "next/navigation";
+import React, { use, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { upsertRecipe, checkRecipeNameExists } from "@/lib/actions/recipe.actions";
+import { Quantity, Recipe } from "@/lib/types";
+import { useUser } from "@clerk/nextjs";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import RecipeSidebar from "@/components/RecipeSidebar";
 
-// --- TYPE DEFINITIONS ---
-interface NewIngredientRow {
-  tempId: number; // for unique key prop in the UI
-  ingredientId: string;
-  quantity: string; // Use string to handle empty form inputs
-  unit: string;
-}
+// Zod schema for a single ingredient
+const IngredientSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Ingredient name cannot be empty."),
+  quantity: z
+    .number({ message: "Quantity must be a number." })
+    .min(0, "Quantity must be non-negative.")
+    .refine((val) => /^\d+(\.\d{1})?$/.test(String(val)), {
+      message: "Max one decimal place.",
+    }),
+  unit: z.string().min(1, "Unit cannot be empty."),
+});
 
-// --- ICONS ---
-const PlusIcon: React.FC = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="inline-block h-5 w-5 mr-2"
-  >
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-);
+// Base schema for the main form's structure and types
+const RecipeFormSchema = z.object({
+  recipe_name: z.string().min(1, "Recipe name is required."),
+  ingredients: z.array(IngredientSchema).min(1, "Ingredient is required."),
+  newIngredientName: z.string().optional(),
+  newIngredientQuantity: z.number().optional(),
+  newIngredientUnit: z.string().optional(),
+});
 
-const TrashIcon: React.FC = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="h-5 w-5"
-  >
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-    <line x1="10" y1="11" x2="10" y2="17"></line>
-    <line x1="14" y1="11" x2="14" y2="17"></line>
-  </svg>
-);
+// Separate schema for validating just the new ingredient fields
+const NewIngredientSubSchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  quantity: z
+    .number({ message: "Must be a number." })
+    .min(0)
+    .refine((val) => /^\d+(\.\d{1})?$/.test(String(val)), { message: "Max one decimal." }),
+  unit: z.string().min(1, "Unit is required."),
+});
 
-// --- Main Component ---
-const AddNewRecipePage: React.FC = () => {
-  const [recipeName, setRecipeName] = useState<string>("");
-  const [ingredientsRows, setIngredientsRows] = useState<NewIngredientRow[]>([{ tempId: 1, ingredientId: "", quantity: "", unit: "" }]);
-
-  const handleIngredientChange = (index: number, field: keyof Omit<NewIngredientRow, "tempId">, value: string) => {
-    const newIngredientsRows = [...ingredientsRows];
-    newIngredientsRows[index] = { ...newIngredientsRows[index], [field]: value };
-    setIngredientsRows(newIngredientsRows);
-  };
-
-  const addIngredientRow = () => {
-    setIngredientsRows([
-      ...ingredientsRows,
-      { tempId: Date.now(), ingredientId: "", quantity: "", unit: "" }, // Use timestamp for unique id
-    ]);
-  };
-
-  const removeIngredientRow = (tempId: number) => {
-    setIngredientsRows(ingredientsRows.filter((ing) => ing.tempId !== tempId));
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    const formattedIngredients: { [ingredientId: string]: Quantity } = {};
-    ingredientsRows.forEach((row) => {
-      if (row.ingredientId.trim() && row.quantity.trim() && row.unit.trim()) {
-        const normalizedIngredientId = row.ingredientId.trim().toLowerCase().replace(/ /g, "_");
-        formattedIngredients[normalizedIngredientId] = {
-          [row.unit.trim().toLowerCase()]: parseFloat(row.quantity), // Keep string if not a valid number
-        };
+// Zod schema with async validation for submission
+const createRecipeFormSchemaForSubmit = (recipeId: string | null) =>
+  RecipeFormSchema.superRefine(async (data, ctx) => {
+    const ingredientNames = new Set<string>();
+    data.ingredients.forEach((ingredient, index) => {
+      const normalizedName = ingredient.name.trim().toLowerCase();
+      if (ingredientNames.has(normalizedName)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Ingredient names must be unique.",
+          path: [`ingredients`, index, `name`],
+        });
       }
+      ingredientNames.add(normalizedName);
     });
 
-    alert("Recipe data logged to the console! (Check your browser dev tools)");
+    const recipeNameExists = await checkRecipeNameExists(data.recipe_name, recipeId);
+    if (recipeNameExists) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A recipe with this name already exists.",
+        path: ["recipe_name"],
+      });
+    }
+  });
 
-    const newRecipe = await upsertRecipe({ recipe_name: recipeName, ingredients: formattedIngredients });
-    if (newRecipe) {
-      alert("Recipe created successfully!");
-      // Redirect or clear form as needed
-      setRecipeName("");
-      setIngredientsRows([{ tempId: 1, ingredientId: "", quantity: "", unit: "" }]);
+type RecipeFormValues = z.infer<typeof RecipeFormSchema>;
+
+const RecipePage = () => {
+  const id = null;
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const router = useRouter();
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const newIngredientNameRef = useRef<HTMLInputElement>(null);
+
+  const form = useForm<RecipeFormValues>({
+    resolver: zodResolver(createRecipeFormSchemaForSubmit(id)),
+    defaultValues: {
+      recipe_name: "",
+      ingredients: [],
+      newIngredientName: "",
+      newIngredientQuantity: undefined,
+      newIngredientUnit: "",
+    },
+    mode: "onBlur",
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "ingredients",
+  });
+
+  if (isUserLoaded && !user) {
+    router.push("/sign-in");
+  }
+
+  const handleAddIngredient = () => {
+    const newIngData = {
+      name: form.getValues("newIngredientName") || "",
+      quantity: form.getValues("newIngredientQuantity"),
+      unit: form.getValues("newIngredientUnit") || "",
+    };
+
+    const validationResult = NewIngredientSubSchema.safeParse(newIngData);
+
+    if (validationResult.success) {
+      const existingNames = new Set(form.getValues("ingredients").map((i) => i.name.trim().toLowerCase()));
+      if (existingNames.has(validationResult.data.name.trim().toLowerCase())) {
+        form.setError("newIngredientName", { type: "manual", message: "Ingredient must be unique." });
+        return;
+      }
+
+      append({
+        id: validationResult.data.name + Date.now() + Math.random(),
+        ...validationResult.data,
+      });
+      form.setValue("newIngredientName", "");
+      form.setValue("newIngredientQuantity", undefined);
+      form.setValue("newIngredientUnit", "");
+      form.clearErrors(["newIngredientName", "newIngredientQuantity", "newIngredientUnit"]);
+
+      setTimeout(() => {
+        newIngredientNameRef.current?.focus();
+      }, 0);
     } else {
-      console.error("Failed to create recipe");
-      redirect("/");
+      validationResult.error.issues.forEach((err) => {
+        form.setError(`newIngredient${err.path[0].toString().charAt(0).toUpperCase() + err.path[0].toString().slice(1)}` as keyof RecipeFormValues, {
+          type: "manual",
+          message: err.message,
+        });
+      });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevent the default form submission
+      handleAddIngredient();
+    }
+  };
+
+  const onSubmit = async (data: RecipeFormValues) => {
+    if (Object.keys(data.ingredients).length === 0) {
+      console.log("No ingredients!");
+      return;
+    }
+
+    const ingredientsForSave: { [ingredientId: string]: Quantity } = {};
+    data.ingredients.forEach((ing) => {
+      const normalizedName = ing.name.trim().toLowerCase().replace(/\s+/g, "_");
+      ingredientsForSave[normalizedName] = { [ing.unit.trim().toLowerCase()]: ing.quantity };
+    });
+
+    const updatedRecipeData = {
+      id: recipe?.id,
+      recipe_name: data.recipe_name.trim(),
+      ingredients: ingredientsForSave,
+    };
+
+    try {
+      await upsertRecipe(updatedRecipeData);
+      alert("Recipe saved successfully!");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      alert("Failed to save recipe. See console for details.");
     }
   };
 
   return (
     <div className="flex bg-gray-50 text-gray-800 min-h-screen">
-      <RecipeSidebar/>
-      <div className="container mx-auto p-4 md:p-8 max-w-2xl">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Add a New Recipe</h1>
-          <p className="text-lg text-gray-600 mt-2">Fill out the details below to add a new recipe to your collection.</p>
-        </header>
+      <RecipeSidebar />
+      <main className="flex-1 py-12">
+        <div className="container mx-auto max-w-3xl">
+          <header className="text-center mb-10">
+            <h1 className="text-4xl font-bold text-gray-900">Edit Recipe</h1>
+          </header>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="bg-white p-8 rounded-xl shadow-md space-y-8">
+              {/* 1. Editable Recipe Name Field */}
+              <FormField
+                control={form.control}
+                name="recipe_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-lg font-medium">Recipe Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Classic Lasagna" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-xl shadow-md space-y-6">
-          {/* Recipe Name Input */}
-          <div>
-            <label htmlFor="recipeName" className="block text-lg font-medium text-gray-700">
-              Recipe Name
-            </label>
-            <input
-              type="text"
-              id="recipeName"
-              value={recipeName}
-              onChange={(e) => setRecipeName(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="e.g., Classic Lasagna"
-              required
-            />
-          </div>
-
-          {/* Ingredients Section */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-700 border-b pb-2">Ingredients</h2>
-            {ingredientsRows.map((ingredientRow, index) => (
-              <div key={ingredientRow.tempId} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                <input
-                  type="text"
-                  value={ingredientRow.ingredientId}
-                  onChange={(e) => handleIngredientChange(index, "ingredientId", e.target.value)}
-                  className="md:col-span-4 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Ingredient ID (e.g., ground_beef)"
-                  required
-                />
-                <input
-                  type="text"
-                  value={ingredientRow.quantity}
-                  onChange={(e) => handleIngredientChange(index, "quantity", e.target.value)}
-                  className="md:col-span-2 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Qty (e.g., 500)"
-                  required
-                />
-                <input
-                  type="text"
-                  value={ingredientRow.unit}
-                  onChange={(e) => handleIngredientChange(index, "unit", e.target.value)}
-                  className="md:col-span-2 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Unit (e.g., g, whole)"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => removeIngredientRow(ingredientRow.tempId)}
-                  className="md:col-span-1 text-red-500 hover:text-red-700 flex justify-center items-center p-2 rounded-md hover:bg-red-100 transition-colors"
-                  aria-label="Remove ingredient"
-                >
-                  <TrashIcon />
-                </button>
+              <div>
+                <h2 className="text-lg font-medium text-gray-700 mb-4">Ingredients</h2>
+                <div className="space-y-4">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                      <FormField
+                        control={form.control}
+                        name={`ingredients.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="col-span-5">
+                            <FormControl>
+                              {/* 2. Ingredient Name Normalization on Blur */}
+                              <Input
+                                placeholder="Ingredient Name"
+                                {...field}
+                                onBlur={(e) => {
+                                  const normalizedValue = e.target.value.trim().toLowerCase().replace(/\s+/g, "_");
+                                  form.setValue(`ingredients.${index}.name`, normalizedValue);
+                                  field.onBlur(); // Important to trigger validation
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`ingredients.${index}.quantity`}
+                        render={({ field }) => (
+                          <FormItem className="col-span-3">
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.1"
+                                placeholder="Qty"
+                                {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`ingredients.${index}.unit`}
+                        render={({ field }) => (
+                          <FormItem className="col-span-3">
+                            <FormControl>
+                              <Input placeholder="Unit" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="col-span-1 flex items-center h-10">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                          <TrashIcon className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={addIngredientRow}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <PlusIcon />
-              Add Ingredient
-            </button>
-          </div>
 
-          {/* Form Actions */}
-          <div className="flex justify-end pt-4 border-t space-x-4">
-            <a href="/" className="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">
-              Cancel
-            </a>
-            <button
-              type="submit"
-              className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all"
-            >
-              Save Recipe
-            </button>
-          </div>
-        </form>
-      </div>
+              {/* Add Ingredient Section */}
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-medium text-gray-700 mb-4">Add Ingredient</h3>
+                <div className="grid grid-cols-12 gap-2 items-start">
+                  <FormField
+                    control={form.control}
+                    name="newIngredientName"
+                    render={({ field }) => (
+                      <FormItem className="col-span-5">
+                        <FormControl>
+                          <Input {...field} placeholder="New Ingredient Name" onKeyDown={handleKeyDown} ref={newIngredientNameRef} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="newIngredientQuantity"
+                    render={({ field }) => (
+                      <FormItem className="col-span-3">
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="Qty"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                            onKeyDown={handleKeyDown}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="newIngredientUnit"
+                    render={({ field }) => (
+                      <FormItem className="col-span-3">
+                        <FormControl>
+                          <Input placeholder="Unit" {...field} onKeyDown={handleKeyDown} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="col-span-1 flex items-center h-10">
+                    <Button type="button" onClick={handleAddIngredient} size="icon">
+                      <PlusIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end pt-6 border-t space-x-4">
+                <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+                  Reload
+                </Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? "Saving..." : "Save Recipe"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </main>
     </div>
   );
 };
 
-export default AddNewRecipePage;
+export default RecipePage;
