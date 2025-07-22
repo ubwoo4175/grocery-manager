@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getUserRecipe, upsertRecipe, checkRecipeNameExists } from "@/lib/actions/recipe.actions";
 import { Quantity, Recipe } from "@/lib/types";
@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, TrashIcon } from "lucide-react";
+import RecipeSidebar from "@/components/RecipeSidebar";
 
 // Zod schema for a single ingredient
 const IngredientSchema = z.object({
@@ -74,16 +75,12 @@ const createRecipeFormSchemaForSubmit = (recipeId?: string) =>
 
 type RecipeFormValues = z.infer<typeof RecipeFormSchema>;
 
-interface RecipePageProps {
-  params: { id: string };
-}
-
-const RecipePage = ({ params }: RecipePageProps) => {
-  const { id } = params;
+const RecipePage = ({ params }: {params: Promise<{ id: string }>} ) => {
+  const { id } = use(params);
   const { user, isLoaded: isUserLoaded } = useUser();
   const router = useRouter();
 
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [recipe, setRecipe] = useState<Recipe | null>(null); 
   const [loading, setLoading] = useState(true);
 
   const form = useForm<RecipeFormValues>({
@@ -204,7 +201,8 @@ const RecipePage = ({ params }: RecipePageProps) => {
   }
 
   return (
-    <div className="bg-gray-50 text-gray-800 min-h-screen py-12">
+    <div className="flex bg-gray-50 text-gray-800 min-h-screen py-12">
+      <RecipeSidebar/>
       <div className="container mx-auto max-w-3xl">
         <header className="text-center mb-10">
           <h1 className="text-4xl font-bold text-gray-900">Edit Recipe</h1>

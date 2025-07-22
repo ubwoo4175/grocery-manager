@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Quantity, UpsertRecipe } from "@/lib/types";
 import { upsertRecipe } from "@/lib/actions/recipe.actions";
 import { redirect } from "next/navigation";
+import RecipeSidebar from "@/components/RecipeSidebar";
 
 // --- TYPE DEFINITIONS ---
 interface NewIngredientRow {
@@ -102,7 +103,8 @@ const AddNewRecipePage: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-50 text-gray-800 min-h-screen">
+    <div className="flex bg-gray-50 text-gray-800 min-h-screen">
+      <RecipeSidebar/>
       <div className="container mx-auto p-4 md:p-8 max-w-2xl">
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900">Add a New Recipe</h1>
