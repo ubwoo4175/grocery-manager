@@ -161,6 +161,9 @@ const RecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
       form.setValue("newIngredientQuantity", undefined);
       form.setValue("newIngredientUnit", "");
       form.clearErrors(["newIngredientName", "newIngredientQuantity", "newIngredientUnit"]);
+      setTimeout(() => {
+        newIngredientNameRef.current?.focus();
+      }, 0);
     } else {
       validationResult.error.issues.forEach((err) => {
         form.setError(`newIngredient${err.path[0].toString().charAt(0).toUpperCase() + err.path[0].toString().slice(1)}` as keyof RecipeFormValues, {
@@ -269,7 +272,6 @@ const RecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 step="0.1"
                                 placeholder="Qty"
                                 {...field}
-                                value={field.value ?? ""}
                                 onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))}
                               />
                             </FormControl>
@@ -309,7 +311,7 @@ const RecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
                     render={({ field }) => (
                       <FormItem className="col-span-5">
                         <FormControl>
-                          <Input placeholder="New Ingredient Name" {...field} onKeyDown={handleKeyDown} />
+                          <Input {...field} placeholder="New Ingredient Name" onKeyDown={handleKeyDown} ref={newIngredientNameRef} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -325,7 +327,6 @@ const RecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
                             type="number"
                             step="0.1"
                             placeholder="Qty"
-                            {...field}
                             value={field.value ?? ""}
                             onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
                             onKeyDown={handleKeyDown}

@@ -127,7 +127,6 @@ const RecipePage = () => {
       form.setValue("newIngredientQuantity", undefined);
       form.setValue("newIngredientUnit", "");
       form.clearErrors(["newIngredientName", "newIngredientQuantity", "newIngredientUnit"]);
-
       setTimeout(() => {
         newIngredientNameRef.current?.focus();
       }, 0);
@@ -238,7 +237,6 @@ const RecipePage = () => {
                                 step="0.1"
                                 placeholder="Qty"
                                 {...field}
-                                value={field.value ?? ""}
                                 onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))}
                               />
                             </FormControl>
@@ -294,7 +292,6 @@ const RecipePage = () => {
                             type="number"
                             step="0.1"
                             placeholder="Qty"
-                            {...field}
                             value={field.value ?? ""}
                             onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
                             onKeyDown={handleKeyDown}
