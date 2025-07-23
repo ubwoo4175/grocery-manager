@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Fridge from "../components/Fridge";
-import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredients } from "@/lib/types";
-import { getUserFridge, getUserRecipes } from "@/lib/actions/recipe.actions";
+import FridgeForm from "../components/FridgeForm";
+import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredients, Fridge } from "@/lib/types";
+import { getUserFridge, getUserFridges, getUserRecipes } from "@/lib/actions/recipe.actions";
 import { useRouter } from "next/navigation";
 
 // --- Helper Icons ---
@@ -147,6 +147,9 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
 
 const App = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [fridges, setFridges] = useState<Fridge[]>([]);
+  const [selectedFridgeId, setSelectedFridgeId] = useState<string | null>(null);
+  const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
   const [fridgeItems, setFridgeItems] = useState<{ [ingredientId: string]: Quantity }>({});
   const [loading, setLoading] = useState(true);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
@@ -155,22 +158,37 @@ const App = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [fetchedRecipes, fetchedFridgeContents] = await Promise.all([getUserRecipes(), getUserFridge()]);
+      const [fetchedRecipes, fetchedFridges] = await Promise.all([getUserRecipes(), getUserFridges()]);
 
       if (fetchedRecipes) {
         setRecipes(fetchedRecipes as Recipe[]);
       }
 
-      if (fetchedFridgeContents && fetchedFridgeContents.length > 0) {
-        setFridgeItems(fetchedFridgeContents[0].ingredients || {});
+      if (fetchedFridges && fetchedFridges.length > 0) {
+        setFridges(fetchedFridges as Fridge[]);
+        setSelectedFridgeId(fetchedFridges[0].id);
       } else {
-        setFridgeItems({});
+        setFridges([]);
       }
       setLoading(false);
     };
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const fetchFridgeDetails = async () => {
+      if (selectedFridgeId) {
+        const fridgeDetails = await getUserFridge(selectedFridgeId);
+        setSelectedFridge(fridgeDetails);
+        setFridgeItems(fridgeDetails?.ingredients || {});
+      } else {
+        setSelectedFridge(null);
+        setFridgeItems({});
+      }
+    };
+    fetchFridgeDetails();
+  }, [selectedFridgeId]);
 
   const handleToggleRecipe = (recipeId: string) => {
     setSelectedRecipeIds((prevIds) => {
@@ -269,7 +287,17 @@ const App = () => {
 
           <div>
             <div className="mt-8 lg:mt-0">
-              <FridgeForm fridge={fridge} id={id} />
+              <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+                <h2 className="text-2xl font-semibold mb-4 border-b pb-2">3. Select Your Fridge</h2>
+                <select value={selectedFridgeId || ""} onChange={(e) => setSelectedFridgeId(e.target.value)} className="w-full p-2 border rounded-md">
+                  {fridges.map((fridge) => (
+                    <option key={fridge.id} value={fridge.id}>
+                      {fridge.fridge_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedFridge && <FridgeForm fridge={selectedFridge} id={selectedFridge.id} />}
             </div>
           </div>
         </div>
