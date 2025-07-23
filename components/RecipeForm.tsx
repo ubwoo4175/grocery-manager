@@ -19,8 +19,8 @@ const IngredientSchema = z.object({
   name: z.string().min(1, "Ingredient name cannot be empty."),
   quantity: z
     .number({ message: "Quantity must be a number." })
-    .min(0, "Quantity must be non-negative.")
-    .refine((val) => /^\d+(\.\d{1})?$/.test(String(val)), {
+    .gt(0, "Quantity must be greater than 0.")
+    .refine((val) => (val * 10) % 1 === 0, {
       message: "Max one decimal place.",
     }),
   unit: z.string().min(1, "Unit cannot be empty."),
@@ -30,20 +30,15 @@ const createRecipeFormSchema = (otherRecipeNames: string[]) =>
   z
     .object({
       recipe_name: z.string().min(1, "Recipe name is required."),
-      ingredients: z
-        .array(IngredientSchema)
-        .min(1, "Ingredient is required.")
-        .refine(
-          (ingredients) => {
-            const names = ingredients.map((ing) => ing.name.trim().toLowerCase());
-            return new Set(names).size === names.length;
-          },
-          {
-            message: "Ingredient names must be unique.",
-          }
-        ),
+      ingredients: z.array(IngredientSchema).min(1, "Ingredient is required."),
       newIngredientName: z.string().optional(),
-      newIngredientQuantity: z.number().optional(),
+      newIngredientQuantity: z
+        .number({ message: "Quantity must be a number." })
+        .gt(0, "Quantity must be greater than 0.")
+        .refine((val) => (val * 10) % 1 === 0, {
+          message: "Max one decimal place.",
+        })
+        .optional(),
       newIngredientUnit: z.string().optional(),
     })
     .refine(
@@ -68,7 +63,21 @@ const createRecipeFormSchema = (otherRecipeNames: string[]) =>
         message: "A recipe with this name already exists.",
         path: ["recipe_name"],
       }
-    );
+    )
+    .superRefine((data, ctx) => {
+      const ingredientNames = new Set<string>();
+      data.ingredients.forEach((ingredient, index) => {
+        const normalizedName = ingredient.name.trim().toLowerCase();
+        if (ingredientNames.has(normalizedName)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Ingredient names must be unique.",
+            path: [`ingredients`, index, `name`],
+          });
+        }
+        ingredientNames.add(normalizedName);
+      });
+    });
 
 type RecipeFormValues = z.infer<ReturnType<typeof createRecipeFormSchema>>;
 
@@ -139,12 +148,14 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
       if (!unit) form.setError("newIngredientUnit", { type: "manual", message: "Unit is required." });
       return;
     }
+
     append({
       id: name + Date.now() + Math.random(),
       name,
       quantity,
       unit,
     });
+
     form.setValue("newIngredientName", "");
     form.setValue("newIngredientQuantity", undefined);
     form.setValue("newIngredientUnit", "");
@@ -243,13 +254,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
                   render={({ field }) => (
                     <FormItem className="col-span-3">
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          placeholder="Qty"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))}
-                        />
+                        <Input type="number" step="0.1" placeholder="Qty" {...field} onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

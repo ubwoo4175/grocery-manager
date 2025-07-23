@@ -2,13 +2,15 @@ export interface Quantity {
   [unit: string]: number;
 }
 
-export interface FridgeItems {
-  [ingredientId: string]: Quantity;
-}
-
 export interface Recipe {
   id: string;
   recipe_name: string;
+  ingredients: { [ingredientId: string]: Quantity };
+}
+
+export interface Fridge {
+  id: string;
+  fridge_name: string;
   ingredients: { [ingredientId: string]: Quantity };
 }
 
@@ -36,5 +38,6 @@ export interface UpsertRecipe {
 }
 
 export interface UpsertFridge {
+  fridge_name: string;
   ingredients: { [ingredientId: string]: Quantity };
 }

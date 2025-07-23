@@ -75,13 +75,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle })
 
   return (
     <div className={`relative flex items-center p-4 border rounded-lg transition-all ${isSelected ? "bg-blue-50 border-blue-400" : "hover:bg-gray-100"}`}>
-      <input
-        type="checkbox"
-        id={recipe.id}
-        checked={isSelected}
-        onChange={() => onToggle(recipe.id)}
-        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4"
-      />
+      <input type="checkbox" id={recipe.id} checked={isSelected} onChange={() => onToggle(recipe.id)} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4" />
       <button
         type="button"
         className="font-medium text-lg text-gray-800 flex-1 text-left focus:outline-none bg-transparent border-0 cursor-pointer"
@@ -275,7 +269,7 @@ const App = () => {
 
           <div>
             <div className="mt-8 lg:mt-0">
-              <Fridge initialData={fridgeItems} onSave={handleFridgeSave} />
+              <FridgeForm fridge={fridge} id={id} />
             </div>
           </div>
         </div>

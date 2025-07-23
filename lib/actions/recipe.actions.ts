@@ -22,6 +22,21 @@ export const upsertRecipe = async (formData: UpsertRecipe & { id?: string }) => 
   revalidatePath("/recipes"); // Revalidate the recipes page
   return data[0];
 };
+export const upsertFridge = async (formData: UpsertFridge & { id?: string }) => {
+  const { userId: user_id } = await auth();
+  const supabase = createSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("Fridges")
+    .upsert({ ...formData, user_id }, { onConflict: "id" })
+    .select();
+
+  if (error || !data) throw new Error(error?.message || "Failed to upsert fridge");
+
+  console.log(data);
+  revalidatePath("/fridges"); // Revalidate the recipes page
+  return data[0];
+};
 
 export const getUserRecipes = async () => {
   const { userId: user_id } = await auth();
@@ -35,6 +50,20 @@ export const getUserRecipes = async () => {
   }
 
   console.log("Fetched recipes:", data);
+  return data;
+};
+export const getUserFridges = async () => {
+  const { userId: user_id } = await auth();
+  const supabase = createSupabaseClient();
+
+  const { data, error } = await supabase.from("Fridges").select("id, fridge_name, ingredients").eq("user_id", user_id);
+
+  if (error) {
+    console.error("Error fetching user fridges:", error);
+    return []; // Return an empty array on error
+  }
+
+  console.log("Fetched fridges:", data);
   return data;
 };
 
@@ -52,36 +81,46 @@ export const getUserRecipe = async (id: string) => {
   console.log("Fetched recipe:", data);
   return data[0] || null; // Return the first item or null if data is empty
 };
-
-export const getUserFridge = async () => {
+export const getUserFridge = async (id: string) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase.from("Fridges").select("id, ingredients").eq("user_id", user_id);
+  const { data, error } = await supabase.from("Fridges").select("id, fridge_name, ingredients").eq("user_id", user_id).eq("id", id);
 
   if (error) {
     console.error("Error fetching user fridge:", error);
-    return []; // Return an empty array on error
+    return null; // Return an empty array on error
   }
 
   console.log("Fetched fridge contents:", data);
-  return data;
+  return data[0] || null;
 };
 
-export const upsertFridge = async (formData: UpsertFridge) => {
+export const deleteUserRecipe = async (id: string) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("Fridges")
-    .upsert({ ...formData, user_id }, { onConflict: "user_id" })
-    .select();
+  const { error } = await supabase.from("Recipes").delete().eq("user_id", user_id).eq("id", id);
 
-  if (error || !data) throw new Error(error?.message || "Failed to upsert fridge");
+  if (error) {
+    console.error("Error deleting user recipe:", error);
+    throw new Error(error.message || "Failed to delete recipe");
+  }
 
-  console.log(data);
-  revalidatePath("/");
-  return data[0];
+  revalidatePath("/recipes");
+};
+export const deleteUserFridge = async (id: string) => {
+  const { userId: user_id } = await auth();
+  const supabase = createSupabaseClient();
+
+  const { error } = await supabase.from("Fridges").delete().eq("user_id", user_id).eq("id", id);
+
+  if (error) {
+    console.error("Error deleting user fridge:", error);
+    throw new Error(error.message || "Failed to delete fridge");
+  }
+
+  revalidatePath("/fridges");
 };
 
 export const checkRecipeNameExists = async (recipeName: string, recipeIdToExclude: string | null): Promise<boolean> => {
@@ -119,21 +158,18 @@ export const getOtherRecipeNames = async (recipeIdToExclude: string | null): Pro
   return data.map((item) => item.recipe_name);
 };
 
-export const checkFridgeNameExists = async (recipeName: string, recipeIdToExclude: string | null): Promise<boolean> => {
+export const getOtherFridgeNames = async (recipeIdToExclude: string | null): Promise<string[]> => {
   const { userId: user_id } = await auth();
   if (!user_id) {
     throw new Error("User not authenticated.");
   }
   const supabase = createSupabaseClient();
-  let query = supabase.from("Fridges").select("id").eq("user_id", user_id).ilike("recipe_name", recipeName.trim());
-  if (recipeIdToExclude) {
-    query = query.neq("id", recipeIdToExclude);
-  }
-  const { data, error } = await query.limit(1);
+  let query = supabase.from("Fridges").select("fridge_name").eq("user_id", user_id);
+  if (recipeIdToExclude) query = query.neq("id", recipeIdToExclude);
+  const { data, error } = await query;
   if (error) {
-    console.error("Error checking for recipe name:", error);
-    // Decide how to handle the error, maybe return true to be safe
-    return true;
+    console.error("Error fetching fridge names:", error);
+    return [];
   }
-  return data.length > 0;
+  return data.map((item) => item.fridge_name);
 };
