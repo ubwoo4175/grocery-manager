@@ -1,334 +1,306 @@
 "use client";
 
-import React, { useState } from "react";
-import { Quantity, AggregatedIngredients } from "../lib/types";
-import { upsertFridge } from "@/lib/actions/recipe.actions";
+import React, { useRef, useEffect } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { upsertFridge, checkFridgeNameExists } from "@/lib/actions/recipe.actions";
+import { Quantity } from "@/lib/types";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { PlusIcon, TrashIcon } from "lucide-react";
 
-// --- TYPE DEFINITIONS ---
-interface FridgeItemDisplay {
-  id: string; // Use ingredient ID as stable key
-  name: string;
-  quantity: number | string;
-  unit: string;
-}
+// --- ZOD SCHEMA DEFINITIONS ---
+const IngredientSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Ingredient name cannot be empty."),
+  quantity: z
+    .number({ message: "Quantity must be a number." })
+    .min(0, "Quantity must be non-negative.")
+    .refine((val) => /^\d+(\.\d{1})?$/.test(String(val)), {
+      message: "Max one decimal place.",
+    }),
+  unit: z.string().min(1, "Unit cannot be empty."),
+});
 
-type EditableField = "quantity" | "unit"; // Name is now the key, not editable via this
+const FridgeFormSchema = (fridgeId: string | null) =>
+  z
+    .object({
+      fridge_name: z.string().min(1, "Fridge name is required."),
+      ingredients: z.array(IngredientSchema),
+      newIngredientName: z.string().optional(),
+      newIngredientQuantity: z.number().optional(),
+      newIngredientUnit: z.string().optional(),
+    })
+    .superRefine(async (data, ctx) => {
+      const ingredientNames = new Set<string>();
+      data.ingredients.forEach((ingredient, index) => {
+        const normalizedName = ingredient.name.trim().toLowerCase();
+        if (ingredientNames.has(normalizedName)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Ingredient names must be unique.",
+            path: [`ingredients`, index, `name`],
+          });
+        }
+        ingredientNames.add(normalizedName);
+      });
+      const fridgeNameExists = await checkFridgeNameExists(data.fridge_name, fridgeId);
+      if (fridgeNameExists) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A recipe with this name already exists.",
+          path: ["recipe_name"],
+        });
+      }
+    });
 
-// --- ICONS ---
-const RefrigeratorIcon: React.FC = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="h-6 w-6 mr-2"
-  >
-    <path d="M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z"></path>
-    <path d="M5 10h14"></path>
-    <path d="M8 14v2"></path>
-  </svg>
-);
+const NewIngredientSubSchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  quantity: z
+    .number({ message: "Must be a number." })
+    .min(0)
+    .refine((val) => /^\d+(\.\d{1,2})?$/.test(String(val)), { message: "Max two decimal places." }),
+  unit: z.string().min(1, "Unit is required."),
+});
 
-const PlusIcon: React.FC = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="inline-block h-5 w-5"
-  >
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-);
+type FridgeFormValues = z.infer<typeof FridgeFormSchema>;
 
-const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={`h-5 w-5 ${className}`}
-  >
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-  </svg>
-);
-
-const RightArrowIcon: React.FC = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="inline-block align-middle mx-1"
-  >
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-    <polyline points="12 5 19 12 12 19"></polyline>
-  </svg>
-);
+// --- FRIDGE COMPONENT ---
 
 interface FridgeProps {
-  items: { [ingredientId: string]: Quantity };
-  setItems: React.Dispatch<React.SetStateAction<{ [ingredientId: string]: Quantity }>>;
-  aggregatedUsage: AggregatedIngredients;
+  initialData: { [ingredientId: string]: Quantity };
+  onSave: (newFridgeItems: { [ingredientId: string]: Quantity }) => void;
 }
 
-const Fridge: React.FC<FridgeProps> = ({ items, setItems, aggregatedUsage }) => {
-  const [newItemName, setNewItemName] = useState("");
-  const [newItemQty, setNewItemQty] = useState("");
-  const [newItemUnit, setNewItemUnit] = useState("");
+const Fridge: React.FC<FridgeProps> = ({ initialData, onSave }) => {
+  const newIngredientNameRef = useRef<HTMLInputElement>(null);
 
-  // State to track the specific field being edited
-  const [editingField, setEditingField] = useState<{
-    id: string;
-    field: EditableField;
-  } | null>(null); // Changed id to string
-  const [editingValue, setEditingValue] = useState("");
+  const form = useForm<FridgeFormValues>({
+    resolver: zodResolver(FridgeFormSchema("")),
+    defaultValues: {
+      ingredients: [],
+      newIngredientName: "",
+      newIngredientQuantity: undefined,
+      newIngredientUnit: "",
+    },
+    mode: "onBlur",
+  });
 
-  const handleAddItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newItemName.trim() && newItemQty.trim() && newItemUnit.trim()) {
-      const normalizedName = newItemName.trim().toLowerCase().replace(/ /g, "_");
-      const newQuantity = parseFloat(newItemQty);
-      const newUnit = newItemUnit.trim().toLowerCase();
-
-      setItems((prevItems) => ({
-        ...prevItems,
-        [normalizedName]: {
-          ...(prevItems[normalizedName] || {}),
-          [newUnit]: newQuantity,
-        },
-      }));
-      setNewItemName("");
-      setNewItemQty("");
-      setNewItemUnit("");
-    }
-  };
-
-  const handleDeleteItem = (ingIdToDelete: string) => {
-    setItems((prevItems) => {
-      const newItems = { ...prevItems };
-      delete newItems[ingIdToDelete];
-      return newItems;
+  useEffect(() => {
+    form.reset({
+      ingredients: Object.entries(initialData).map(([name, quantityObj]) => ({
+        id: name,
+        name: name,
+        quantity: Object.values(quantityObj)[0],
+        unit: Object.keys(quantityObj)[0],
+      })),
     });
-  };
+  }, [initialData, form]);
 
-  const handleStartEdit = (ingId: string, unit: string, field: EditableField, value: string) => {
-    setEditingField({ id: ingId, field });
-    setEditingValue(value);
-  };
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "ingredients",
+  });
 
-  const handleCancelEdit = () => {
-    setEditingField(null);
-    setEditingValue("");
-  };
+  const handleAddIngredient = () => {
+    const newIngData = {
+      name: form.getValues("newIngredientName") || "",
+      quantity: form.getValues("newIngredientQuantity"),
+      unit: form.getValues("newIngredientUnit") || "",
+    };
 
-  const handleSaveEdit = () => {
-    if (!editingField) return;
+    const validationResult = NewIngredientSubSchema.safeParse(newIngData);
 
-    const { id: editingIngId, field: editingFieldType } = editingField;
-    setItems((prevItems) => {
-      const newItems = { ...prevItems };
-      const currentIngredient = newItems[editingIngId];
-
-      if (currentIngredient) {
-        if (editingFieldType === "quantity") {
-          // Assuming we are editing the first unit found or a specific one
-          const unitKey = Object.keys(currentIngredient)[0]; // Simplistic: takes first unit
-          if (unitKey) {
-            currentIngredient[unitKey] = parseFloat(editingValue) || 0;
-          }
-        } else if (editingFieldType === "unit") {
-          // This is more complex, might require re-structuring the ingredient if the unit changes
-          // For now, let's assume direct replacement for simplicity or flag as an area for more robust handling
-          const oldUnitKey = Object.keys(currentIngredient)[0];
-          if (oldUnitKey && oldUnitKey !== editingValue) {
-            const oldQuantity = currentIngredient[oldUnitKey];
-            delete currentIngredient[oldUnitKey];
-            currentIngredient[editingValue.trim().toLowerCase()] = oldQuantity;
-          }
-        }
-        newItems[editingIngId] = { ...currentIngredient }; // Ensure immutability for React
+    if (validationResult.success) {
+      const existingNames = new Set(form.getValues("ingredients").map((i) => i.name.trim().toLowerCase()));
+      if (existingNames.has(validationResult.data.name.trim().toLowerCase())) {
+        form.setError("newIngredientName", { type: "manual", message: "Ingredient must be unique." });
+        return;
       }
-      return newItems;
-    });
 
-    handleCancelEdit();
-  };
+      append({
+        id: validationResult.data.name.trim().toLowerCase().replace(/\s+/g, "_") + Date.now(),
+        ...validationResult.data,
+      });
 
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSaveEdit();
-    } else if (e.key === "Escape") {
-      handleCancelEdit();
+      form.setValue("newIngredientName", "");
+      form.setValue("newIngredientQuantity", undefined);
+      form.setValue("newIngredientUnit", "");
+      form.clearErrors(["newIngredientName", "newIngredientQuantity", "newIngredientUnit"]);
+      newIngredientNameRef.current?.focus();
+    } else {
+      validationResult.error.issues.forEach((err) => {
+        form.setError(`newIngredient${err.path[0].toString().charAt(0).toUpperCase() + err.path[0].toString().slice(1)}` as keyof FridgeFormValues, {
+          type: "manual",
+          message: err.message,
+        });
+      });
     }
   };
 
-  const handleSaveFridge = async () => {
-    console.log(items);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddIngredient();
+    }
+  };
 
-    const updatedItems = await upsertFridge({ ingredients: items });
+  const onSubmit = async (data: FridgeFormValues) => {
+    const ingredientsForSave: { [ingredientId: string]: Quantity } = {};
+    data.ingredients.forEach((ing) => {
+      const normalizedName = ing.name.trim().toLowerCase().replace(/\s+/g, "_");
+      ingredientsForSave[normalizedName] = { [ing.unit.trim().toLowerCase()]: ing.quantity };
+    });
 
-    if (updatedItems) {
-      alert("Fridge udserted successfully!");
-    } else {
-      console.error("Failed to upsert fridge");
+    try {
+      await upsertFridge({ ingredients: ingredientsForSave });
+      onSave(ingredientsForSave);
+      alert("Fridge saved successfully!");
+    } catch (error) {
+      console.error("Error saving fridge:", error);
+      alert("Failed to save fridge. See console for details.");
     }
   };
 
   return (
-    <div className="bg-gray-50 text-gray-800 min-h-screen">
-      <div className="container mx-auto p-4 md:p-8 max-w-2xl">
-        <h2 className="text-2xl font-semibold mb-4 border-b pb-2 flex items-center">
-          <RefrigeratorIcon />
-          My Fridge
-        </h2>
-
-        {/* Headers for quantity columns */}
-        <div className="grid grid-cols-12 gap-2">
-          <div className="col-span-5 text-sm font-medium text-gray-600 pl-3">Ingredient</div>
-          <div className="col-span-3 text-sm font-medium text-gray-600 pl-3">Amount left</div>
-          <div className="col-span-2 text-sm font-medium text-gray-600 pl-3">You need</div>
-          <div className="col-span-2"></div> {/* Empty column for delete button alignment */}
-        </div>
-
-        {/* Item List */}
-        <ul className="grid grid-cols-12 gap-2 space-y-1 mb-4">
-          {Object.entries(items).map(([ingId, quantityMap]) => {
-            const [unit, quantity] = Object.entries(quantityMap)[0]; // Assuming one unit per ingredient for simplicity
-
-            // Find usage for this item (case-insensitive match)
-            const usageEntry = aggregatedUsage![ingId];
-            let usedQty: number | string | null = null;
-            let usedUnit = "";
-
-            if (usageEntry) {
-              const unitMatch = Object.entries(usageEntry).find(([u]) => u.toLowerCase() === unit.toLowerCase());
-              if (unitMatch) {
-                usedQty = unitMatch[1];
-                usedUnit = unitMatch[0];
-              }
-            }
-
-            const remaining = typeof quantity === "number" && typeof usedQty === "number" ? quantity - usedQty : quantity;
-
-            return (
-              <li key={ingId} className="col-span-12 grid grid-cols-12 gap-2 items-center p-1 rounded-md hover:bg-gray-50 group">
-                {/* Name Field - Not directly editable here as it's the key */}
-                <div className="col-span-5">
-                  <span className="block w-full px-3 py-2 text-gray-600">{ingId}</span>
+    <div className="container mx-auto max-w-3xl py-12">
+      <header className="text-center mb-10">
+        <h1 className="text-4xl font-bold text-gray-900">My Fridge</h1>
+        <p className="text-lg text-gray-600 mt-2">Manage the ingredients you have on hand.</p>
+      </header>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="bg-white p-8 rounded-xl shadow-md space-y-8">
+          <div>
+            <h2 className="text-lg font-medium text-gray-700 mb-4">Ingredients</h2>
+            <div className="space-y-4">
+              {fields.map((field, index) => (
+                <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                  <FormField
+                    control={form.control}
+                    name={`ingredients.${index}.name`}
+                    render={({ field: formField }) => (
+                      <FormItem className="col-span-5">
+                        <FormControl>
+                          <Input
+                            placeholder="Ingredient Name"
+                            {...formField}
+                            onBlur={(e) => {
+                              const normalizedValue = e.target.value.trim().toLowerCase().replace(/\s+/g, "_");
+                              form.setValue(`ingredients.${index}.name`, normalizedValue);
+                              formField.onBlur();
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`ingredients.${index}.quantity`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-3">
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Qty"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`ingredients.${index}.unit`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-3">
+                        <FormControl>
+                          <Input placeholder="Unit" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="col-span-1 flex items-center h-10">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                      <TrashIcon className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                {/* Quantity and Unit Fields (Amount Left) */}
-                <div className="col-span-3">
-                  {editingField?.id === ingId && editingField?.field === "quantity" ? (
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={handleSaveEdit}
-                      onKeyDown={handleEditKeyDown}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      autoFocus
-                    />
-                  ) : (
-                    <span
-                      className="block w-full px-3 py-2 text-gray-600 cursor-pointer rounded-md border border-transparent hover:border-gray-300 transition-colors"
-                      onClick={() => handleStartEdit(ingId, unit, "quantity", String(quantity))}
-                    >
-                      {quantity} {unit}
-                    </span>
-                  )}
-                </div>
-                {/* You Need Field */}
-                <div className="col-span-3">
-                  <span
-                    className={`block w-full px-3 py-2 rounded-md ${
-                      typeof remaining === "number" && remaining < 0 ? "text-red-600 font-semibold" : "text-gray-600"
-                    }`}
-                  >
-                    {usedQty !== null && usedUnit ? `${usedQty} ${usedUnit}` : ""}
-                  </span>
-                </div>
-                <div className="col-span-1 flex justify-end pr-2">
-                  <button
-                    onClick={() => handleDeleteItem(ingId)}
-                    className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+          <div className="pt-6 border-t">
+            <h3 className="text-lg font-medium text-gray-700 mb-4">Add Ingredient</h3>
+            <div className="grid grid-cols-12 gap-2 items-start">
+              <FormField
+                control={form.control}
+                name="newIngredientName"
+                render={({ field }) => (
+                  <FormItem className="col-span-5">
+                    <FormControl>
+                      <Input {...field} placeholder="New Ingredient Name" onKeyDown={handleKeyDown} ref={newIngredientNameRef} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="newIngredientQuantity"
+                render={({ field }) => (
+                  <FormItem className="col-span-3">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Qty"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                        onKeyDown={handleKeyDown}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="newIngredientUnit"
+                render={({ field }) => (
+                  <FormItem className="col-span-3">
+                    <FormControl>
+                      <Input placeholder="Unit" {...field} onKeyDown={handleKeyDown} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="col-span-1 flex items-center h-10">
+                <Button type="button" onClick={handleAddIngredient} size="icon">
+                  <PlusIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
 
-        {Object.keys(items).length === 0 && <p className="text-gray-500 text-center py-4">Your fridge is empty. Add an item below.</p>}
-
-        {/* Add Item Form */}
-        <div className="mt-4 pt-4 border-t">
-          <h3 className="font-semibold text-lg mb-2">Add New Item</h3>
-          <form onSubmit={handleAddItem} className="grid grid-cols-12 gap-2">
-            <input
-              type="text"
-              value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
-              placeholder="Ingredient Name"
-              className="col-span-12 md:col-span-5 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              required
-            />
-            <input
-              type="text" // Changed to text to allow non-numeric input for quantity if needed
-              value={newItemQty}
-              onChange={(e) => setNewItemQty(e.target.value)}
-              placeholder="Qty"
-              className="col-span-4 md:col-span-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              required
-            />
-            <input
-              type="text"
-              value={newItemUnit}
-              onChange={(e) => setNewItemUnit(e.target.value)}
-              placeholder="Unit"
-              className="col-span-8 md:col-span-3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              required
-            />
-            <button type="submit" className="col-span-12 md:col-span-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center">
-              <PlusIcon />
-            </button>
-          </form>
-        </div>
-        <div className="mt-4 pt-4 border-t flex justify-end">
-          <button
-            type="button"
-            onClick={handleSaveFridge}
-            className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all"
-          >
-            Save Fridge
-          </button>
-        </div>
-      </div>
+          <div className="flex justify-end pt-6 border-t space-x-4">
+            <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+              Reload
+            </Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Saving..." : "Save Fridge"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 };

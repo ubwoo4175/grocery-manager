@@ -57,7 +57,7 @@ export const getUserFridge = async () => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase.from("Fridge").select("id, ingredients").eq("user_id", user_id);
+  const { data, error } = await supabase.from("Fridges").select("id, ingredients").eq("user_id", user_id);
 
   if (error) {
     console.error("Error fetching user fridge:", error);
@@ -73,7 +73,7 @@ export const upsertFridge = async (formData: UpsertFridge) => {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from("Fridge")
+    .from("Fridges")
     .upsert({ ...formData, user_id }, { onConflict: "user_id" })
     .select();
 
@@ -90,20 +90,50 @@ export const checkRecipeNameExists = async (recipeName: string, recipeIdToExclud
     throw new Error("User not authenticated.");
   }
   const supabase = createSupabaseClient();
-
   let query = supabase.from("Recipes").select("id").eq("user_id", user_id).ilike("recipe_name", recipeName.trim());
-
   if (recipeIdToExclude) {
     query = query.neq("id", recipeIdToExclude);
   }
-
   const { data, error } = await query.limit(1);
-
   if (error) {
     console.error("Error checking for recipe name:", error);
     // Decide how to handle the error, maybe return true to be safe
     return true;
   }
+  return data.length > 0;
+};
 
+export const getOtherRecipeNames = async (recipeIdToExclude: string | null): Promise<string[]> => {
+  const { userId: user_id } = await auth();
+  if (!user_id) {
+    throw new Error("User not authenticated.");
+  }
+  const supabase = createSupabaseClient();
+  let query = supabase.from("Recipes").select("recipe_name").eq("user_id", user_id);
+  if (recipeIdToExclude) query = query.neq("id", recipeIdToExclude);
+  const { data, error } = await query;
+  if (error) {
+    console.error("Error fetching recipe names:", error);
+    return [];
+  }
+  return data.map((item) => item.recipe_name);
+};
+
+export const checkFridgeNameExists = async (recipeName: string, recipeIdToExclude: string | null): Promise<boolean> => {
+  const { userId: user_id } = await auth();
+  if (!user_id) {
+    throw new Error("User not authenticated.");
+  }
+  const supabase = createSupabaseClient();
+  let query = supabase.from("Fridges").select("id").eq("user_id", user_id).ilike("recipe_name", recipeName.trim());
+  if (recipeIdToExclude) {
+    query = query.neq("id", recipeIdToExclude);
+  }
+  const { data, error } = await query.limit(1);
+  if (error) {
+    console.error("Error checking for recipe name:", error);
+    // Decide how to handle the error, maybe return true to be safe
+    return true;
+  }
   return data.length > 0;
 };
