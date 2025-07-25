@@ -254,7 +254,13 @@ const FridgeForm: React.FC<FridgeFormProps> = ({ fridge, id }) => {
                   render={({ field }) => (
                     <FormItem className="col-span-3">
                       <FormControl>
-                        <Input type="number" step="0.1" placeholder="Qty" {...field} onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))} />
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="Qty"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

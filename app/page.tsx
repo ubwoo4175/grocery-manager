@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import FridgeForm from "../components/FridgeForm";
 import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredients, Fridge } from "@/lib/types";
-import { getUserFridge, getUserFridges, getUserRecipes } from "@/lib/actions/recipe.actions";
+import { getUserFridges, getUserRecipes } from "@/lib/actions/recipe.actions";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 // --- Helper Icons ---
 const ShoppingCartIcon: React.FC = () => (
@@ -62,6 +62,18 @@ const PlusIcon: React.FC = () => (
   </svg>
 );
 
+const UnitToNum: { [key: string]: number } = {
+  ml: 1,
+  스푼: 15,
+  컵: 200,
+  병: 750,
+
+  봉지: 500, // ex) 다진_마늘 1 봉지,
+};
+
+const haveEnough = () => {
+  return true;
+};
 // --- Child Components ---
 
 interface RecipeCardProps {
@@ -75,7 +87,13 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle })
 
   return (
     <div className={`relative flex items-center p-4 border rounded-lg transition-all ${isSelected ? "bg-blue-50 border-blue-400" : "hover:bg-gray-100"}`}>
-      <input type="checkbox" id={recipe.id} checked={isSelected} onChange={() => onToggle(recipe.id)} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4" />
+      <input
+        type="checkbox"
+        id={recipe.id}
+        checked={isSelected}
+        onChange={() => onToggle(recipe.id)}
+        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4"
+      />
       <button
         type="button"
         className="font-medium text-lg text-gray-800 flex-1 text-left focus:outline-none bg-transparent border-0 cursor-pointer"
@@ -112,7 +130,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
           <h3 className="text-xl font-semibold mb-3 text-blue-800 flex items-center">
             <ShoppingCartIcon /> To Buy
           </h3>
-          <ul className="space-y-2 pl-2">
+          <ul className="space-y-2 pl-2  border rounded-lg border-blue-800">
             {list.notInFridge.map((item) => (
               <li key={item.name} className="flex items-start">
                 <span className="text-gray-800">
@@ -131,7 +149,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
           <ul className="space-y-2 pl-2">
             {list.inFridge.map((item) => (
               <li key={item.name} className="flex items-start">
-                <span className="text-gray-800">
+                <span className="text-green-800">
                   {item.name}: <strong className="ml-1 font-medium">{item.amountStr}</strong>
                 </span>
               </li>
@@ -143,17 +161,70 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ list }) => {
   );
 };
 
+interface FridgeDisplayProps {
+  fridge: Fridge | null;
+  neededIngredients: AggregatedIngredients;
+}
+
+const FridgeDisplay: React.FC<FridgeDisplayProps> = ({ fridge, neededIngredients }) => {
+  if (!fridge) {
+    return <div className="text-center py-8 text-gray-500">Select a fridge to see its contents.</div>;
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md">
+      <h2 className="text-2xl font-semibold mb-4 border-b pb-2">{fridge.fridge_name}</h2>
+      <table className="w-full">
+        <thead>
+          <tr className="border-b">
+            <th className="text-left py-2">Ingredient</th>
+            <th className="text-left py-2">Quantity</th>
+            <th className="text-left py-2">You Need</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(fridge.ingredients).map(([ingredientId, quantityObj]) => {
+            const needed = neededIngredients[ingredientId];
+            const neededAmount = needed ? `${Object.values(needed)[0]} ${Object.keys(needed)[0]}` : "";
+
+            return (
+              <tr key={ingredientId} className="border-b">
+                <td className="py-2">{ingredientId.replace(/_/g, " ")}</td>
+                <td className="py-2 text-green-800">{`${Object.values(quantityObj)[0]} ${Object.keys(quantityObj)[0]}`}</td>
+                {needed ? (
+                  <td
+                    className={cn(
+                      "py-2",
+                      Object.values(quantityObj)[0] * UnitToNum[Object.keys(quantityObj)[0]] >= Object.values(needed)[0] * UnitToNum[Object.keys(needed)[0]]
+                        ? ""
+                        : "text-red-500"
+                    )}
+                  >
+                    {neededAmount}
+                  </td>
+                ) : (
+                  <td></td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // --- Main App Component ---
 
 const App = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [fridges, setFridges] = useState<Fridge[]>([]);
-  const [selectedFridgeId, setSelectedFridgeId] = useState<string | null>(null);
-  const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
+  const [selectedFridgeIndex, setSelectedFridgeIndex] = useState<number>(0);
   const [fridgeItems, setFridgeItems] = useState<{ [ingredientId: string]: Quantity }>({});
   const [loading, setLoading] = useState(true);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
   const [shoppingList, setShoppingList] = useState<ShoppingListType | null>(null);
+  const [neededIngredients, setNeededIngredients] = useState<AggregatedIngredients>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -166,7 +237,7 @@ const App = () => {
 
       if (fetchedFridges && fetchedFridges.length > 0) {
         setFridges(fetchedFridges as Fridge[]);
-        setSelectedFridgeId(fetchedFridges[0].id);
+        setFridgeItems(fetchedFridges[0].ingredients || {});
       } else {
         setFridges([]);
       }
@@ -175,20 +246,6 @@ const App = () => {
 
     fetchData();
   }, []);
-
-  useEffect(() => {
-    const fetchFridgeDetails = async () => {
-      if (selectedFridgeId) {
-        const fridgeDetails = await getUserFridge(selectedFridgeId);
-        setSelectedFridge(fridgeDetails);
-        setFridgeItems(fridgeDetails?.ingredients || {});
-      } else {
-        setSelectedFridge(null);
-        setFridgeItems({});
-      }
-    };
-    fetchFridgeDetails();
-  }, [selectedFridgeId]);
 
   const handleToggleRecipe = (recipeId: string) => {
     setSelectedRecipeIds((prevIds) => {
@@ -200,10 +257,6 @@ const App = () => {
       }
       return newIds;
     });
-  };
-
-  const handleFridgeSave = (newFridgeItems: { [ingredientId: string]: Quantity }) => {
-    setFridgeItems(newFridgeItems);
   };
 
   useEffect(() => {
@@ -220,6 +273,7 @@ const App = () => {
         }
       }
     });
+    setNeededIngredients(aggregated);
 
     const inFridge: ShoppingListItem[] = [];
     const notInFridge: ShoppingListItem[] = [];
@@ -229,7 +283,7 @@ const App = () => {
       const neededUnit = Object.keys(aggregated[ingId])[0];
 
       const fridgeItem = fridgeItems[ingId];
-
+      //--------------------------------------------------------------------------------------------------------------
       if (fridgeItem) {
         const availableAmount = Object.values(fridgeItem)[0];
         const availableUnit = Object.keys(fridgeItem)[0];
@@ -239,14 +293,16 @@ const App = () => {
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
           } else {
             notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount - availableAmount} ${neededUnit}` });
-            if (availableAmount > 0) {
-              inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
-            }
+            inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
           }
         } else {
           // Units are different, add to both lists to be safe
-          notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
-          inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
+          if (availableAmount * UnitToNum[availableUnit] >= neededAmount * UnitToNum[neededUnit]) {
+            inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
+          } else {
+            notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
+            inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
+          }
         }
       } else {
         notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
@@ -255,6 +311,12 @@ const App = () => {
 
     setShoppingList({ inFridge, notInFridge });
   }, [selectedRecipeIds, fridgeItems, recipes]);
+
+  useEffect(() => {
+    if (fridges.length > 0) {
+      setFridgeItems(fridges[selectedFridgeIndex].ingredients || {});
+    }
+  }, [selectedFridgeIndex, fridges]);
 
   if (loading) {
     return <div className="p-8 text-center text-lg">Loading your kitchen...</div>;
@@ -289,15 +351,19 @@ const App = () => {
             <div className="mt-8 lg:mt-0">
               <div className="bg-white p-6 rounded-xl shadow-md mb-8">
                 <h2 className="text-2xl font-semibold mb-4 border-b pb-2">3. Select Your Fridge</h2>
-                <select value={selectedFridgeId || ""} onChange={(e) => setSelectedFridgeId(e.target.value)} className="w-full p-2 border rounded-md">
-                  {fridges.map((fridge) => (
-                    <option key={fridge.id} value={fridge.id}>
+                <select
+                  value={selectedFridgeIndex}
+                  onChange={(e) => setSelectedFridgeIndex(parseInt(e.target.value, 10))}
+                  className="w-full p-2 border rounded-md"
+                >
+                  {fridges.map((fridge, index) => (
+                    <option key={fridge.id} value={index}>
                       {fridge.fridge_name}
                     </option>
                   ))}
                 </select>
               </div>
-              {selectedFridge && <FridgeForm fridge={selectedFridge} id={selectedFridge.id} />}
+              <FridgeDisplay fridge={fridges[selectedFridgeIndex]} neededIngredients={neededIngredients} />
             </div>
           </div>
         </div>
