@@ -63,16 +63,28 @@ const PlusIcon: React.FC = () => (
 );
 
 const UnitToNum: { [key: string]: number } = {
+  알: 1,
+  개: 1,
+  조각: 1,
+  
   ml: 1,
   스푼: 15,
   컵: 180,
   병: 750,
+  L: 1000,
 
-  봉지: 500, // ex) 다진_마늘 1 봉지,
+  g: 1,
+  kg: 1000,
+
+  봉지: 500, // ex) 들깨가루 1 봉지,
   꼬집: 1,
   줌: 30,
+  대: 5, // ex) 대파 1대
 };
 
+const SimilarName: { [key: string]: string } ={
+  계란노른자: "계란",
+}
 const haveEnough = () => {
   return true;
 };
@@ -284,7 +296,11 @@ const App = () => {
       const neededAmount = Object.values(aggregated[ingId])[0];
       const neededUnit = Object.keys(aggregated[ingId])[0];
 
-      const fridgeItem = fridgeItems[ingId];
+      let fridgeItem = fridgeItems[ingId];
+      if(!fridgeItem && SimilarName[ingId]) {
+        fridgeItem = fridgeItems[SimilarName[ingId]];
+      }
+
       //--------------------------------------------------------------------------------------------------------------
       if (fridgeItem) {
         const availableAmount = Object.values(fridgeItem)[0];

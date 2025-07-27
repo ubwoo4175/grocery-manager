@@ -47,8 +47,15 @@ export const callRecipeExtractApi = async (recipeText: string): Promise<AiRecipe
   const content = data.choices[0].message.content;
 
   try {
-    // The AI should return a JSON string, so we parse it.
-    return JSON.parse(content);
+    const startIndex = content.indexOf('{');
+    const endIndex = content.lastIndexOf('}');
+
+    if (startIndex === -1 || endIndex === -1) {
+      throw new Error("No valid JSON object found in the AI response.");
+    }
+    const jsonString = content.substring(startIndex, endIndex + 1);
+
+    return JSON.parse(jsonString);
   } catch (e) {
     console.error("Failed to parse AI response as JSON:", content);
     throw new Error("The AI returned data in an invalid format.");

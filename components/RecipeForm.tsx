@@ -184,7 +184,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
 
     const ingredientsForSave: { [ingredientId: string]: Quantity } = {};
     data.ingredients.forEach((ing) => {
-      const normalizedName = ing.name.trim().toLowerCase().replace(/\s+/g, "_");
+      const normalizedName = ing.name.trim().toLowerCase().replace(/\s+/g, "");
       ingredientsForSave[normalizedName] = { [ing.unit.trim().toLowerCase()]: ing.quantity };
     });
 
@@ -273,7 +273,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
                             placeholder="Ingredient Name"
                             {...field}
                             onBlur={(e) => {
-                              const normalizedValue = e.target.value.trim().toLowerCase().replace(/\s+/g, "_");
+                              const normalizedValue = e.target.value.trim().toLowerCase().replace(/\s+/g, "");
                               form.setValue(`ingredients.${index}.name`, normalizedValue);
                               field.onBlur(); // Important to trigger validation
                             }}
