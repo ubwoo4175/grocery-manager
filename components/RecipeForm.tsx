@@ -226,9 +226,8 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
         });
 
     } catch (error) {
-        console.error("Error generating recipe with AI:", error);
         if (error instanceof Error) {
-            alert(`Failed to generate recipe: ${error.message}`);
+            alert(`Failed to generate recipe: \n -> ${error.message}`);
         } else {
             alert("An unknown error occurred while generating the recipe.");
         }

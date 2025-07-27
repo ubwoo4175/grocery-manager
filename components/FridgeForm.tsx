@@ -226,9 +226,8 @@ const FridgeForm: React.FC<FridgeFormProps> = ({ fridge, id }) => {
         });
 
     } catch (error) {
-        console.error("Error generating fridge with AI:", error);
         if (error instanceof Error) {
-            alert(`Failed to generate fridge: ${error.message}`);
+            alert(`Failed to generate fridge: \n -> ${error.message}`);
         } else {
             alert("An unknown error occurred while generating the fridge.");
         }

@@ -51,13 +51,23 @@ export const callRecipeExtractApi = async (recipeText: string): Promise<AiRecipe
     const endIndex = content.lastIndexOf('}');
 
     if (startIndex === -1 || endIndex === -1) {
-      throw new Error("No valid JSON object found in the AI response.");
+      throw new Error("Wrong JSON format");
     }
-    const jsonString = content.substring(startIndex, endIndex + 1);
+    const json = JSON.parse(content.substring(startIndex, endIndex + 1));
 
-    return JSON.parse(jsonString);
-  } catch (e) {
-    console.error("Failed to parse AI response as JSON:", content);
-    throw new Error("The AI returned data in an invalid format.");
+    if(json["error"])
+      throw new Error("Irrelevant input");
+    
+    return json;
+
+  } catch (e: any) {
+    switch (e.message) {
+      case "Wrong JSON format":
+        throw new Error("AI agent failed providing a proper JSON format object");
+      case "Irrelevant input":
+        throw new Error("Input text doesn't seem like a valid recipe. Try again.");
+      default:
+        throw new Error("code error");
+    }
   }
 };
