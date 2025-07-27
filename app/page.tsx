@@ -65,10 +65,12 @@ const PlusIcon: React.FC = () => (
 const UnitToNum: { [key: string]: number } = {
   ml: 1,
   스푼: 15,
-  컵: 200,
+  컵: 180,
   병: 750,
 
   봉지: 500, // ex) 다진_마늘 1 봉지,
+  꼬집: 1,
+  줌: 30,
 };
 
 const haveEnough = () => {
@@ -300,7 +302,7 @@ const App = () => {
           if (availableAmount * UnitToNum[availableUnit] >= neededAmount * UnitToNum[neededUnit]) {
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
           } else {
-            notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
+            notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit} (냉장고에 ${availableAmount} ${availableUnit})` });
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
           }
         }
