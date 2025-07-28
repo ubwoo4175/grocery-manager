@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Quantity, Recipe, ShoppingListItem, ShoppingListType, AggregatedIngredients, Fridge } from "@/lib/types";
 import { getUserFridges, getUserRecipes } from "@/lib/actions/recipe.actions";
 import { useRouter } from "next/navigation";
@@ -98,6 +98,8 @@ interface RecipeCardProps {
 
 const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, quantity, onQuantityChange }) => {
   const router = useRouter();
+  const [isHovering, setIsHovering] = useState(false);
+  const hoverBoxRef = useRef<HTMLDivElement>(null);
 
   const handleDecrement = () => {
     if (quantity > 0) {
@@ -109,18 +111,32 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, quantity, onQuantityCha
     onQuantityChange(recipe.id, quantity + 1);
   };
 
+  const handleToggleHover = () => {
+    setIsHovering(!isHovering);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (hoverBoxRef.current && !hoverBoxRef.current.contains(event.target as Node)) {
+        setIsHovering(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
     <div
       className={cn(
-        " flex items-center p-4 border rounded-lg transition-all",
+        "flex items-center p-4 border rounded-lg transition-all",
         quantity > 0 ? "bg-blue-50 border-blue-400" : "hover:bg-gray-100"
       )}
     >
-      <div className="flex-1 text-left">
-        <span className="font-medium text-lg text-gray-800">{recipe.recipe_name}</span>
-      </div>
-      <div className="flex items-center h-10">
-        <span className="w-8 rounded-lg text-center text-lg font-semibold">{quantity}</span>
+      <div className="flex border rounded-lg items-center h-15 w-15">
+        <span className="w-7 rounded-lg text-center text-lg font-semibold">{quantity}</span>
         <div className="flex flex-col">
           <button
             onClick={handleIncrement}
@@ -146,7 +162,43 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, quantity, onQuantityCha
           </button>
         </div>
       </div>
-
+      <div className="flex-1 text-left pl-3">
+        <span className="font-medium text-md text-gray-800">{recipe.recipe_name}</span>
+      </div>
+      <div className="relative" ref={hoverBoxRef}>
+        <button
+          type="button"
+          className="ml-2 p-1 rounded hover:bg-gray-200"
+          aria-label="Show ingredients"
+          onClick={handleToggleHover}
+        >
+          <svg
+            className="w-5 h-5 text-gray-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </button>
+        {isHovering && (
+          <div className="absolute z-10 -top-1/2 left-full ml-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg p-2">
+            <ul className="text-sm text-gray-700">
+              {Object.entries(recipe.ingredients).map(([name, quantityObj]) => (
+                <li key={name}>
+                  {name}: {Object.values(quantityObj)[0]} {Object.keys(quantityObj)[0]}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
       <button
         type="button"
         className="ml-2 p-1 rounded hover:bg-gray-200"
