@@ -66,7 +66,7 @@ const UnitToNum: { [key: string]: number } = {
   알: 1,
   개: 1,
   조각: 1,
-  
+
   ml: 1,
   스푼: 15,
   컵: 180,
@@ -82,9 +82,9 @@ const UnitToNum: { [key: string]: number } = {
   대: 5, // ex) 대파 1대
 };
 
-const SimilarName: { [key: string]: string } ={
+const SimilarName: { [key: string]: string } = {
   계란노른자: "계란",
-}
+};
 const haveEnough = () => {
   return true;
 };
@@ -92,33 +92,81 @@ const haveEnough = () => {
 
 interface RecipeCardProps {
   recipe: Recipe;
-  isSelected: boolean;
-  onToggle: (recipeId: string) => void;
+  quantity: number;
+  onQuantityChange: (recipeId: string, newQuantity: number) => void;
 }
 
-const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, isSelected, onToggle }) => {
+const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, quantity, onQuantityChange }) => {
   const router = useRouter();
 
+  const handleDecrement = () => {
+    if (quantity > 0) {
+      onQuantityChange(recipe.id, quantity - 1);
+    }
+  };
+
+  const handleIncrement = () => {
+    onQuantityChange(recipe.id, quantity + 1);
+  };
+
   return (
-    <div className={`relative flex items-center p-4 border rounded-lg transition-all ${isSelected ? "bg-blue-50 border-blue-400" : "hover:bg-gray-100"}`}>
-      <input
-        type="checkbox"
-        id={recipe.id}
-        checked={isSelected}
-        onChange={() => onToggle(recipe.id)}
-        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-4"
-      />
+    <div
+      className={cn(
+        " flex items-center p-4 border rounded-lg transition-all",
+        quantity > 0 ? "bg-blue-50 border-blue-400" : "hover:bg-gray-100"
+      )}
+    >
+      <div className="flex-1 text-left">
+        <span className="font-medium text-lg text-gray-800">{recipe.recipe_name}</span>
+      </div>
+      <div className="flex items-center h-10">
+        <span className="w-8 rounded-lg text-center text-lg font-semibold">{quantity}</span>
+        <div className="flex flex-col">
+          <button
+            onClick={handleIncrement}
+            className="flex items-center justify-center w-6 h-6 border-l border-t border-r rounded-t-md bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              ></path>
+            </svg>
+          </button>
+          <button
+            onClick={handleDecrement}
+            disabled={quantity === 0}
+            className="flex items-center justify-center w-6 h-6 border rounded-b-md bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 12H6"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <button
         type="button"
-        className="font-medium text-lg text-gray-800 flex-1 text-left focus:outline-none bg-transparent border-0 cursor-pointer"
-        style={{ background: "none", boxShadow: "none" }}
-        onClick={() => onToggle(recipe.id)}
-        aria-pressed={isSelected}
+        className="ml-2 p-1 rounded hover:bg-gray-200"
+        aria-label="Edit recipe"
+        onClick={() => router.push(`/recipes/${recipe.id}`)}
       >
-        {recipe.recipe_name}
-      </button>
-      <button type="button" className="ml-2 p-1 rounded hover:bg-gray-200" aria-label="Edit recipe" onClick={() => router.push(`/recipes/${recipe.id}`)}>
-        <PlusIcon />
+        <svg
+          className="w-5 h-5 text-gray-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L17.5 3.5z"
+          />
+        </svg>
       </button>
     </div>
   );
@@ -204,12 +252,15 @@ const FridgeDisplay: React.FC<FridgeDisplayProps> = ({ fridge, neededIngredients
             return (
               <tr key={ingredientId} className="border-b">
                 <td className="py-2">{ingredientId.replace(/_/g, " ")}</td>
-                <td className="py-2 text-green-800">{`${Object.values(quantityObj)[0]} ${Object.keys(quantityObj)[0]}`}</td>
+                <td className="py-2 text-green-800">{`${Object.values(quantityObj)[0]} ${
+                  Object.keys(quantityObj)[0]
+                }`}</td>
                 {needed ? (
                   <td
                     className={cn(
                       "py-2",
-                      Object.values(quantityObj)[0] * UnitToNum[Object.keys(quantityObj)[0]] >= Object.values(needed)[0] * UnitToNum[Object.keys(needed)[0]]
+                      Object.values(quantityObj)[0] * UnitToNum[Object.keys(quantityObj)[0]] >=
+                        Object.values(needed)[0] * UnitToNum[Object.keys(needed)[0]]
                         ? ""
                         : "text-red-500"
                     )}
@@ -236,7 +287,7 @@ const App = () => {
   const [selectedFridgeIndex, setSelectedFridgeIndex] = useState<number>(0);
   const [fridgeItems, setFridgeItems] = useState<{ [ingredientId: string]: Quantity }>({});
   const [loading, setLoading] = useState(true);
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
+  const [selectedRecipeQuantities, setSelectedRecipeQuantities] = useState<Map<string, number>>(new Map());
   const [shoppingList, setShoppingList] = useState<ShoppingListType | null>(null);
   const [neededIngredients, setNeededIngredients] = useState<AggregatedIngredients>({});
 
@@ -261,29 +312,31 @@ const App = () => {
     fetchData();
   }, []);
 
-  const handleToggleRecipe = (recipeId: string) => {
-    setSelectedRecipeIds((prevIds) => {
-      const newIds = new Set(prevIds);
-      if (newIds.has(recipeId)) {
-        newIds.delete(recipeId);
+  const handleRecipeQuantityChange = (recipeId: string, newQuantity: number) => {
+    setSelectedRecipeQuantities((prevQuantities) => {
+      const newQuantities = new Map(prevQuantities);
+      if (newQuantity > 0) {
+        newQuantities.set(recipeId, newQuantity);
       } else {
-        newIds.add(recipeId);
+        newQuantities.delete(recipeId);
       }
-      return newIds;
+      return newQuantities;
     });
   };
 
   useEffect(() => {
-    const recipesToMake = recipes.filter((r) => selectedRecipeIds.has(r.id));
     const aggregated: AggregatedIngredients = {};
 
-    recipesToMake.forEach((recipe) => {
-      for (const ingId in recipe.ingredients) {
-        const quantityMap = recipe.ingredients[ingId];
-        if (!aggregated[ingId]) aggregated[ingId] = {};
-        for (const unit in quantityMap) {
-          if (!aggregated[ingId][unit]) aggregated[ingId][unit] = 0;
-          (aggregated[ingId][unit] as number) += quantityMap[unit];
+    selectedRecipeQuantities.forEach((quantity, recipeId) => {
+      const recipe = recipes.find((r) => r.id === recipeId);
+      if (recipe) {
+        for (const ingId in recipe.ingredients) {
+          const quantityMap = recipe.ingredients[ingId];
+          if (!aggregated[ingId]) aggregated[ingId] = {};
+          for (const unit in quantityMap) {
+            if (!aggregated[ingId][unit]) aggregated[ingId][unit] = 0;
+            (aggregated[ingId][unit] as number) += quantityMap[unit] * quantity;
+          }
         }
       }
     });
@@ -297,7 +350,7 @@ const App = () => {
       const neededUnit = Object.keys(aggregated[ingId])[0];
 
       let fridgeItem = fridgeItems[ingId];
-      if(!fridgeItem && SimilarName[ingId]) {
+      if (!fridgeItem && SimilarName[ingId]) {
         fridgeItem = fridgeItems[SimilarName[ingId]];
       }
 
@@ -310,7 +363,10 @@ const App = () => {
           if (availableAmount >= neededAmount) {
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
           } else {
-            notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount - availableAmount} ${neededUnit}` });
+            notInFridge.push({
+              name: ingId.replace(/_/g, " "),
+              amountStr: `${neededAmount - availableAmount} ${neededUnit}`,
+            });
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
           }
         } else {
@@ -318,7 +374,10 @@ const App = () => {
           if (availableAmount * UnitToNum[availableUnit] >= neededAmount * UnitToNum[neededUnit]) {
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit}` });
           } else {
-            notInFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${neededAmount} ${neededUnit} (냉장고에 ${availableAmount} ${availableUnit})` });
+            notInFridge.push({
+              name: ingId.replace(/_/g, " "),
+              amountStr: `${neededAmount} ${neededUnit} (냉장고에 ${availableAmount} ${availableUnit})`,
+            });
             inFridge.push({ name: ingId.replace(/_/g, " "), amountStr: `${availableAmount} ${availableUnit}` });
           }
         }
@@ -328,7 +387,7 @@ const App = () => {
     }
 
     setShoppingList({ inFridge, notInFridge });
-  }, [selectedRecipeIds, fridgeItems, recipes]);
+  }, [selectedRecipeQuantities, fridgeItems, recipes]);
 
   useEffect(() => {
     if (fridges.length > 0) {
@@ -354,7 +413,12 @@ const App = () => {
               <h2 className="text-2xl font-semibold mb-4 border-b pb-2">1. Choose Your Recipes</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {recipes.map((recipe) => (
-                  <RecipeCard key={recipe.id} recipe={recipe} isSelected={selectedRecipeIds.has(recipe.id)} onToggle={handleToggleRecipe} />
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    quantity={selectedRecipeQuantities.get(recipe.id) || 0}
+                    onQuantityChange={handleRecipeQuantityChange}
+                  />
                 ))}
               </div>
             </div>
