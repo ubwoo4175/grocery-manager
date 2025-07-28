@@ -8,10 +8,10 @@ export interface AiRecipeResponse {
 }
 
 const getSystemPrompt = async (): Promise<string> => {
-  const response = await fetch('/prompts/recipe_extract_prompt.txt');
-  
+  const response = await fetch("/prompts/recipe_extract_prompt.txt");
+
   if (!response.ok) {
-    throw new Error('Failed to fetch the recipe prompt.');
+    throw new Error("Failed to fetch the recipe prompt.");
   }
   return response.text();
 };
@@ -26,16 +26,16 @@ export const callRecipeExtractApi = async (recipeText: string): Promise<AiRecipe
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      "model": "qwen/qwen3-235b-a22b-2507:free",
-      "messages": [
-        { "role": "system", "content": systemPrompt },
-        { "role": "user", "content": recipeText }
-      ]
-    })
+      model: "qwen/qwen3-235b-a22b-2507:free",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: recipeText },
+      ],
+    }),
   });
 
   if (!response.ok) {
@@ -47,19 +47,17 @@ export const callRecipeExtractApi = async (recipeText: string): Promise<AiRecipe
   const content = data.choices[0].message.content;
 
   try {
-    const startIndex = content.indexOf('{');
-    const endIndex = content.lastIndexOf('}');
+    const startIndex = content.indexOf("{");
+    const endIndex = content.lastIndexOf("}");
 
     if (startIndex === -1 || endIndex === -1) {
       throw new Error("Wrong JSON format");
     }
     const json = JSON.parse(content.substring(startIndex, endIndex + 1));
 
-    if(json["error"])
-      throw new Error("Irrelevant input");
-    
-    return json;
+    if (json["error"]) throw new Error("Irrelevant input");
 
+    return json;
   } catch (e: any) {
     switch (e.message) {
       case "Wrong JSON format":

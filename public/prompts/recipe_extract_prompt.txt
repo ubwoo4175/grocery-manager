@@ -7,7 +7,7 @@ Your task is to analyze the provided recipe text and output a single, valid JSON
 # Extraction Rules & Logic
 
 1. Recipe Name (recipe_name)
-- Extract: Identify and extract the recipe's official name from the text.
+- Extract: Identify and extract the recipe's official name from the text. Most likely copy the first sentence of the text.
 - Infer: If no name is explicitly given, create a concise and descriptive name based on the primary ingredients and cooking method (e.g., "들깨 오일 파스타", "Kimchi Fried Rice").
 
 2. Ingredients Array (ingredients)
@@ -31,13 +31,13 @@ For each ingredient object, extract the following:
 - unit:
     - Extract the unit of measurement.
     - Normalization: Standardize common units.
-        - Korean: `스푼` -> `TBSP` or `tsp`, `컵` -> `cup`, `개`/`알` -> `개`, `꼬집` -> `pinch`, `인분` -> `serving`.
+        - Korean: `TBSP`/`tsp`/`큰술` -> `스푼`, `cup` -> `컵`, `개`/`알` -> `개`, `pinch` -> `꼬집`, `serving` -> `인분`.
         - English: Tablespoon -> `TBSP`, teaspoon -> `tsp`.
     - Inference Hierarchy (if no unit is specified):
         1.  Countable Items: For whole items like vegetables, fruits, or eggs, use `개` (or `each`).
         2.  Staples: For main carbohydrates like pasta or rice, use `g` (assume 100g per serving) or `인분` (`serving`).
         3.  Spices/Seasoning: For salt, pepper, or herbs with no specified amount, use `꼬집` (`pinch`).
-        4.  Liquids: For oils or sauces mentioned as "a drizzle" or "some," use a logical default like `TBSP`.
+        4.  Liquids: For oils or sauces mentioned as "a drizzle" or "some," use a logical default like `스푼푼`.
 
 # Error Handling & Validation
 
@@ -56,6 +56,8 @@ For each ingredient object, extract the following:
 
 **Example Input (Successful Extraction) :**
 ```
+들기름 깻잎 파스타 [호윤]
+
 https://youtube.com/shorts/IQvCP3l425o?si=iV4Uit83HwrJEcjp
 소금, 파스타
 들깨가루 1스푼
@@ -75,7 +77,7 @@ https://youtube.com/shorts/LDCsmkNMj2E?si=iv8ynQMBmn9ju7Kz
 **Example Output:**
 ```
 {
-  "recipe_name": "들깨 파스타",
+  "recipe_name": "들기름 깻잎 파스타 [호윤]",
   "ingredients": [
     {
       "name": "파스타",

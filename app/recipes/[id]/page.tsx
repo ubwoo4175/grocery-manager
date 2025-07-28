@@ -62,8 +62,8 @@ const EditRecipePage = ({ params }: { params: Promise<{ id: string }> }) => {
     <div className="flex bg-gray-50 text-gray-800 min-h-screen">
       <RecipeSidebar />
       <main className="flex-1 py-12">
-        <div className="container mx-auto max-w-3xl">
-          <header className="text-center mb-10">
+        <div className="container mx-auto max-w-8xl">
+          <header className="text-center mb-20">
             <h1 className="text-4xl font-bold text-gray-900">{recipe?.recipe_name}</h1>
             <div className="flex justify-end mb-4">
               <Button variant="destructive" onClick={handleDelete}>

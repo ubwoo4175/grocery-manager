@@ -78,15 +78,15 @@ const UnitToNum: { [key: string]: number } = {
 
   봉지: 500, // ex) 들깨가루 1 봉지,
   꼬집: 1,
-  줌: 30,
+  줌: 30, // ex) 콩나물 1줌
   대: 5, // ex) 대파 1대
 };
 
 const SimilarName: { [key: string]: string } = {
+  올리브유: "올리브오일",
   계란노른자: "계란",
-};
-const haveEnough = () => {
-  return true;
+  스파게티: "파스타",
+  링귀니: "파스타",
 };
 // --- Child Components ---
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Quantity, Recipe } from "@/lib/types";
 import { upsertRecipe, getOtherRecipeNames } from "@/lib/actions/recipe.actions";
 import { callRecipeExtractApi } from "@/lib/actions/callRecipeExtractApi";
+import { getNotionDatabase, getNotionPageContent } from "@/lib/notion";
 import { useUser } from "@clerk/nextjs";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -95,6 +96,32 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
   const [otherRecipeNames, setOtherRecipeNames] = useState<string[]>([]);
   const [aiInputText, setAiInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [notionDatabase, setNotionDatabase] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    const fetchNotionDatabase = async () => {
+      const response = await getNotionDatabase();
+      setNotionDatabase(response);
+    };
+    fetchNotionDatabase();
+  }, []);
+
+  const handleNotionPageClick = async (page: any) => {
+    // Accept the full page object
+    const content = await getNotionPageContent(page.id);
+
+    // Extract the title from the page object
+    const title = page.properties.이름.title[0].plain_text;
+
+    const textContent = content
+      .map((block: any) => {
+        if (block[block.type].rich_text) return block[block.type].rich_text.map((t: any) => t.plain_text).join("");
+      })
+      .join("\n");
+
+    // Prepend the title to the page content
+    setAiInputText(`${title}\n\n${textContent}`);
+  };
 
   useEffect(() => {
     const fetchOtherNames = async () => {
@@ -207,38 +234,36 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
       alert("Failed to save recipe. See console for details.");
     }
   };
-  
+
   // --- AI Assistant Functions ---
   const handleGenerateRecipe = async () => {
     setIsGenerating(true);
     try {
-        const aiData = await callRecipeExtractApi(aiInputText);
-        
-        form.setValue("recipe_name", aiData.recipe_name);
-        remove(); // Clear existing ingredients
-        aiData.ingredients.forEach(ing => {
-            append({
-                id: ing.name + Date.now() + Math.random(),
-                name: ing.name,
-                quantity: ing.quantity,
-                unit: ing.unit,
-            });
-        });
+      const aiData = await callRecipeExtractApi(aiInputText);
 
+      form.setValue("recipe_name", aiData.recipe_name);
+      remove(); // Clear existing ingredients
+      aiData.ingredients.forEach((ing) => {
+        append({
+          id: ing.name + Date.now() + Math.random(),
+          name: ing.name,
+          quantity: ing.quantity,
+          unit: ing.unit,
+        });
+      });
     } catch (error) {
-        if (error instanceof Error) {
-            alert(`Failed to generate recipe: \n -> ${error.message}`);
-        } else {
-            alert("An unknown error occurred while generating the recipe.");
-        }
+      if (error instanceof Error) {
+        alert(`Failed to generate recipe: \n -> ${error.message}`);
+      } else {
+        alert("An unknown error occurred while generating the recipe.");
+      }
     } finally {
-        setIsGenerating(false);
+      setIsGenerating(false);
     }
   };
 
-
   return (
-    <div className="grid lg:grid-cols-2 gap-12">
+    <div className="grid lg:grid-cols-3 gap-8">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="bg-white p-8 rounded-xl shadow-md space-y-8">
           {/* 1. Editable Recipe Name Field */}
@@ -332,7 +357,12 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
                 render={({ field }) => (
                   <FormItem className="col-span-5">
                     <FormControl>
-                      <Input {...field} placeholder="New Ingredient Name" onKeyDown={handleKeyDown} ref={newIngredientNameRef} />
+                      <Input
+                        {...field}
+                        placeholder="New Ingredient Name"
+                        onKeyDown={handleKeyDown}
+                        ref={newIngredientNameRef}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -388,13 +418,13 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
           </div>
         </form>
       </Form>
-      
+
       {/* AI Assistant Section */}
       <div className="bg-white p-8 rounded-xl shadow-md space-y-4">
         <h2 className="text-lg font-medium">✨ AI Recipe Assistant</h2>
         <p className="text-sm text-gray-600">
-          Paste a recipe from a website, text, or anywhere else, and the AI will automatically fill out the form for you.
-          (레시피를 웹사이트, 텍스트 등 어디에서든 붙여넣기하면 AI가 자동으로 양식을 작성해줍니다.)
+          Paste a recipe from a website, text, or anywhere else, and the AI will automatically fill out the form for
+          you. (레시피를 웹사이트, 텍스트 등 어디에서든 붙여넣기하면 AI가 자동으로 양식을 작성해줍니다.)
         </p>
         <Textarea
           placeholder="Paste your recipe here... (여기에 레시피를 붙여넣으세요...)"
@@ -405,6 +435,27 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
         <Button onClick={handleGenerateRecipe} disabled={isGenerating || !aiInputText}>
           {isGenerating ? "Generating..." : "Generate Recipe"}
         </Button>
+      </div>
+      <div className="bg-white p-8 rounded-xl shadow-md space-y-4">
+        Notion Database
+        <h1 className="text-4xl font-bold mb-8">Notion Database Preview</h1>
+        <div className="w-full max-w-2xl">
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <ul className="divide-y divide-gray-200">
+              {notionDatabase &&
+                notionDatabase.map((page: any) => (
+                  <li key={page.id} className="p-2 font-medium space-x-4 ">
+                    <a href={page.url} target="_blank" rel="noopener noreferrer" className="text-sm hover:underline">
+                      {page.properties.이름.title[0].plain_text}
+                    </a>
+                    <Button type="button" onClick={() => handleNotionPageClick(page)} size="sm">
+                      {"get text"}
+                    </Button>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
