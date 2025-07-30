@@ -193,10 +193,60 @@ export const newRecipePermissions = async () => {
   } else if (has({ feature: "200_recipes" })) {
     limit = 200;
   } else if (has({ feature: "30_recipes" })) {
-    limit = 10;
+    limit = 30;
   }
 
   const { data, error } = await supabase.from("Recipes").select("id", { count: "exact" }).eq("user_id", user_id);
+
+  if (error) throw new Error(error.message);
+
+  if (data?.length >= limit) {
+    return false;
+  } else {
+    return true;
+  }
+};
+
+export const newFridgePermissions = async () => {
+  const { userId: user_id, has } = await auth();
+  const supabase = createSupabaseClient();
+
+  let limit = 0;
+
+  if (has({ feature: "unlimited_fridges" })) {
+    return true;
+  } else if (has({ feature: "5_fridges" })) {
+    limit = 5;
+  } else if (has({ feature: "1_fridge" })) {
+    limit = 1;
+  }
+
+  const { data, error } = await supabase.from("Fridges").select("id", { count: "exact" }).eq("user_id", user_id);
+
+  if (error) throw new Error(error.message);
+
+  if (data?.length >= limit) {
+    return false;
+  } else {
+    return true;
+  }
+};
+
+const newAICallPermission = async () => {
+  const { userId: user_id, has } = await auth();
+  const supabase = createSupabaseClient();
+
+  let limit = 0;
+
+  if (has({ feature: "unlimited_fridges" })) {
+    return true;
+  } else if (has({ feature: "5_fridges" })) {
+    limit = 5;
+  } else if (has({ feature: "1_fridge" })) {
+    limit = 1;
+  }
+
+  const { data, error } = await supabase.from("Fridges").select("id", { count: "exact" }).eq("user_id", user_id);
 
   if (error) throw new Error(error.message);
 

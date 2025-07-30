@@ -86,22 +86,22 @@ const FridgeSidebar = () => {
       <nav className="space-y-2">
         {fridges.map((fridge) => (
           <div key={fridge.id} className="relative">
-            <div className="flex items-center rounded-lg transition-colors">
+            <div className="flex items-center rounded-lg transition-colors w-full">
               <Link
                 href={`/fridges/${fridge.id}`}
                 className={cn(
-                  "flex-grow px-3 py-2 rounded-l-md text-sm font-medium transition-colors",
+                  "flex-1 min-w-0 px-3 py-2 rounded-l-md text-sm font-medium transition-colors",
                   pathname === `/fridges/${fridge.id}`
                     ? "bg-blue-100 text-blue-700"
                     : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
                 )}
               >
-                <span className="truncate">{fridge.fridge_name}</span>
+                <span className="truncate block">{fridge.fridge_name}</span>
               </Link>
               <button
                 type="button"
                 className={cn(
-                  "p-2 rounded-r-md",
+                  "p-2 rounded-r-md flex-shrink-0",
                   pathname === `/fridges/${fridge.id}` ? "bg-blue-100 hover:bg-blue-200" : "hover:bg-gray-200"
                 )}
                 aria-label="Show ingredients"
