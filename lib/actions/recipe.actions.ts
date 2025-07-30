@@ -71,7 +71,11 @@ export const getUserRecipe = async (id: string) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase.from("Recipes").select("id, recipe_name, ingredients").eq("user_id", user_id).eq("id", id);
+  const { data, error } = await supabase
+    .from("Recipes")
+    .select("id, recipe_name, ingredients")
+    .eq("user_id", user_id)
+    .eq("id", id);
 
   if (error) {
     console.error("Error fetching user recipes:", error);
@@ -85,7 +89,11 @@ export const getUserFridge = async (id: string) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase.from("Fridges").select("id, fridge_name, ingredients").eq("user_id", user_id).eq("id", id);
+  const { data, error } = await supabase
+    .from("Fridges")
+    .select("id, fridge_name, ingredients")
+    .eq("user_id", user_id)
+    .eq("id", id);
 
   if (error) {
     console.error("Error fetching user fridge:", error);
@@ -172,4 +180,29 @@ export const getOtherFridgeNames = async (recipeIdToExclude: string | null): Pro
     return [];
   }
   return data.map((item) => item.fridge_name);
+};
+
+export const newRecipePermissions = async () => {
+  const { userId: user_id, has } = await auth();
+  const supabase = createSupabaseClient();
+
+  let limit = 0;
+
+  if (has({ feature: "unlimited_recipes" })) {
+    return true;
+  } else if (has({ feature: "200_recipes" })) {
+    limit = 200;
+  } else if (has({ feature: "30_recipes" })) {
+    limit = 10;
+  }
+
+  const { data, error } = await supabase.from("Recipes").select("id", { count: "exact" }).eq("user_id", user_id);
+
+  if (error) throw new Error(error.message);
+
+  if (data?.length >= limit) {
+    return false;
+  } else {
+    return true;
+  }
 };
