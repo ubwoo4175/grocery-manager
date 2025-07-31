@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // 6. Get the ID and type of the event
+  // 6. Get the ID and type of t he event
   const { id } = evt.data;
   const eventType = evt.type;
 
