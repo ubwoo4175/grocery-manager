@@ -10,12 +10,12 @@ export const getApiLimitForUser = (user: { privateMetadata: { [key: string]: unk
 };
 
 export const callMeteredApi = async (recipeText: string) => {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     throw new Error("User not authenticated.");
   }
 
-  const user = await clerkClient.users.getUser(userId);
+  const user = await (await clerkClient()).users.getUser(userId);
   const metadata = user.privateMetadata || {};
 
   let count = (metadata.apiCallCount as number) || 0;
@@ -27,7 +27,9 @@ export const callMeteredApi = async (recipeText: string) => {
     const nextResetDate = new Date();
     nextResetDate.setMonth(nextResetDate.getMonth() + 1);
 
-    await clerkClient.users.updateUserMetadata(userId, {
+    await (
+      await clerkClient()
+    ).users.updateUserMetadata(userId, {
       privateMetadata: {
         ...metadata,
         apiCallCount: 1, // Reset to 1 for the current call
@@ -45,7 +47,9 @@ export const callMeteredApi = async (recipeText: string) => {
   }
 
   // 3. Increment the count and make the API call
-  await clerkClient.users.updateUserMetadata(userId, {
+  await (
+    await clerkClient()
+  ).users.updateUserMetadata(userId, {
     privateMetadata: {
       ...metadata,
       apiCallCount: count + 1,
