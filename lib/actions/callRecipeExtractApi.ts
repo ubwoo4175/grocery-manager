@@ -30,7 +30,7 @@ export const callRecipeExtractApi = async (recipeText: string): Promise<AiRecipe
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "qwen/qwen3-235b-a22b-2507:free",
+      model: "qwen/qwen3-235b-a22b-2507",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: recipeText },
