@@ -3,7 +3,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { callRecipeExtractApi } from "./callRecipeExtractApi"; // Your existing function
 
-export const getApiLimitForUser = async (user: { privateMetadata: { [key: string]: unknown } }): Promise<number> => {
+const getApiLimitForUser = (user: { privateMetadata: { [key: string]: unknown } }): number => {
   // This logic can be based on their subscription plan, which you can also store in metadata
   // For now, let's assume a simple limit. You can expand this with your Clerk features.
   return 100; // Example: 100 calls per month for a standard user
