@@ -65,8 +65,10 @@ export async function POST(req: Request) {
     // Set the reset date to one month from now
     nextResetDate.setMonth(nextResetDate.getMonth() + 1);
 
-    const clerk = await clerkClient();
-    await clerk.users.updateUserMetadata(id, {
+    // CORRECTED: Directly use clerkClient.users
+    await (
+      await clerkClient()
+    ).users.updateUserMetadata(id, {
       privateMetadata: {
         apiCallCount: 0,
         apiCountResetDate: nextResetDate.toISOString(),
