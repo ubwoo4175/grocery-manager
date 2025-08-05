@@ -2,16 +2,16 @@ import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { WebhookEvent, clerkClient } from "@clerk/nextjs/server";
 
-// The function that handles incoming POST requests from Clerk
 export async function POST(req: Request) {
   // 1. You need a secret to verify the webhook. Get it from the Clerk Dashboard.
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
+    // This will cause a 500 error if the secret is not set.
     throw new Error("Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local");
   }
 
-  // 2. Get the headers from the incoming request
+  // 2. Get the headers
   const headerPayload = await headers();
   const svix_id = headerPayload.get("svix-id");
   const svix_timestamp = headerPayload.get("svix-timestamp");
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // 3. Get the body of the request
+  // 3. Get the body
   const payload = await req.json();
   const body = JSON.stringify(payload);
 
@@ -47,11 +47,10 @@ export async function POST(req: Request) {
     });
   }
 
-  // 6. Get the ID and type of t he event
+  // 6. Get the ID and type of the event
   const { id } = evt.data;
   const eventType = evt.type;
 
-  // If the ID is not available, return an error
   if (!id) {
     return new Response("Error: User ID not found in webhook event", {
       status: 400,
@@ -60,12 +59,10 @@ export async function POST(req: Request) {
 
   // 7. Handle the 'user.created' event
   if (eventType === "user.created") {
-    // This is where you set the initial metadata for a new user.
     const nextResetDate = new Date();
-    // Set the reset date to one month from now
     nextResetDate.setMonth(nextResetDate.getMonth() + 1);
 
-    // CORRECTED: Directly use clerkClient.users
+    // Use the correct syntax for calling clerkClient in your environment
     await (
       await clerkClient()
     ).users.updateUserMetadata(id, {
@@ -74,8 +71,10 @@ export async function POST(req: Request) {
         apiCountResetDate: nextResetDate.toISOString(),
       },
     });
+    return new Response("Successfully updated user metadata", {
+      status: 200,
+    });
   }
 
-  // 8. Acknowledge receipt of the webhook
   return new Response("", { status: 200 });
 }
