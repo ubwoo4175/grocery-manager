@@ -71,11 +71,7 @@ export const getUserRecipe = async (id: string) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("Recipes")
-    .select("id, recipe_name, ingredients")
-    .eq("user_id", user_id)
-    .eq("id", id);
+  const { data, error } = await supabase.from("Recipes").select("id, recipe_name, ingredients").eq("user_id", user_id).eq("id", id);
 
   if (error) {
     console.error("Error fetching user recipes:", error);
@@ -89,11 +85,7 @@ export const getUserFridge = async (id: string) => {
   const { userId: user_id } = await auth();
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("Fridges")
-    .select("id, fridge_name, ingredients")
-    .eq("user_id", user_id)
-    .eq("id", id);
+  const { data, error } = await supabase.from("Fridges").select("id, fridge_name, ingredients").eq("user_id", user_id).eq("id", id);
 
   if (error) {
     console.error("Error fetching user fridge:", error);
@@ -232,7 +224,7 @@ export const newFridgePermissions = async () => {
   }
 };
 
-const userApiCallLimit = async () => {
+export const userApiCallLimit = async () => {
   const { userId: user_id, has } = await auth();
 
   if (has({ feature: "unlimited_ai_assist_month" })) {

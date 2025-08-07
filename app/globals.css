@@ -84,7 +84,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-bbody {
+body {
   font-family: var(--font-bricolage);
 }
 
