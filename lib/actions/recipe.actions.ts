@@ -232,27 +232,14 @@ export const newFridgePermissions = async () => {
   }
 };
 
-const newAICallPermission = async () => {
+const userApiCallLimit = async () => {
   const { userId: user_id, has } = await auth();
-  const supabase = createSupabaseClient();
 
-  let limit = 0;
-
-  if (has({ feature: "unlimited_fridges" })) {
-    return true;
-  } else if (has({ feature: "5_fridges" })) {
-    limit = 5;
-  } else if (has({ feature: "1_fridge" })) {
-    limit = 1;
-  }
-
-  const { data, error } = await supabase.from("Fridges").select("id", { count: "exact" }).eq("user_id", user_id);
-
-  if (error) throw new Error(error.message);
-
-  if (data?.length >= limit) {
-    return false;
-  } else {
-    return true;
+  if (has({ feature: "unlimited_ai_assist_month" })) {
+    return 99999999;
+  } else if (has({ feature: "500_ai_assist_month" })) {
+    return 500;
+  } else if (has({ feature: "500_ai_assist_month" })) {
+    return 100;
   }
 };

@@ -3,57 +3,60 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { callRecipeExtractApi } from "./callRecipeExtractApi"; // Your existing function
 
-export const getApiLimitForUser = (user: { privateMetadata: { [key: string]: unknown } }): number => {
-  // This logic can be based on their subscription plan, which you can also store in metadata
-  // For now, let's assume a simple limit. You can expand this with your Clerk features.
-  return 100; // Example: 100 calls per month for a standard user
-};
-
-export const callMeteredApi = async (recipeText: string) => {
+export const getUserApiCount = async () => {
   const { userId } = await auth();
   if (!userId) {
     throw new Error("User not authenticated.");
   }
 
-  // CORRECTED: Directly use clerkClient.users
-  const user = await clerkClient.users.getUser(userId);
-  const metadata = user.privateMetadata || {};
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const metadata = user.privateMetadata;
+  if (!metadata) {
+    throw new Error("Unable to get user metadata.");
+  }
 
-  let count = (metadata.apiCallCount as number) || 0;
+  let count = metadata.apiCount as number;
   const resetDate = metadata.apiCountResetDate ? new Date(metadata.apiCountResetDate as string) : null;
   const now = new Date();
 
   // 1. Check if the reset date has passed
-  if (!resetDate || now >= resetDate) {
+  if (!resetDate || now > resetDate) {
     const nextResetDate = new Date();
     nextResetDate.setMonth(nextResetDate.getMonth() + 1);
 
     // CORRECTED: Directly use clerkClient.users
-    await clerkClient.users.updateUserMetadata(userId, {
+    await client.users.updateUserMetadata(userId, {
       privateMetadata: {
         ...metadata,
-        apiCallCount: 1, // Reset to 1 for the current call
+        apiCount: 0,
         apiCountResetDate: nextResetDate.toISOString(),
       },
     });
+  }
+  return count;
+};
 
-    return await callRecipeExtractApi(recipeText);
+export const addUserApiCount = async () => {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("User not authenticated.");
   }
 
-  // 2. Check if user is within their limit
-  const limit = getApiLimitForUser(user);
-  if (count >= limit) {
-    throw new Error("You have exceeded your monthly API call limit.");
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const metadata = user.privateMetadata;
+  if (!metadata) {
+    throw new Error("Unable to get user metadata.");
   }
+
+  let count = metadata.apiCount as number;
 
   // 3. Increment the count and make the API call
-  // CORRECTED: Directly use clerkClient.users
-  await clerkClient.users.updateUserMetadata(userId, {
+  await client.users.updateUserMetadata(userId, {
     privateMetadata: {
       ...metadata,
-      apiCallCount: count + 1,
+      apiCount: count + 1,
     },
   });
-
-  return await callRecipeExtractApi(recipeText);
 };

@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Quantity, Recipe } from "@/lib/types";
 import { upsertRecipe, getOtherRecipeNames } from "@/lib/actions/recipe.actions";
-import { callMeteredApi } from "@/lib/actions/clerk.actions";
+import { getUserApiCount, addUserApiCount } from "@/lib/actions/clerk.actions";
+import { callRecipeExtractApi } from "@/lib/actions/callRecipeExtractApi";
 import { getNotionDatabase, getNotionPageContent } from "@/lib/notion";
 import { useUser } from "@clerk/nextjs";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -239,7 +240,7 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
   const handleGenerateRecipe = async () => {
     setIsGenerating(true);
     try {
-      const aiData = await callMeteredApi(aiInputText);
+      const aiData = await callRecipeExtractApi(aiInputText);
 
       form.setValue("recipe_name", aiData.recipe_name);
       remove(); // Clear existing ingredients
@@ -357,7 +358,12 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
                 render={({ field }) => (
                   <FormItem className="col-span-5">
                     <FormControl>
-                      <Input {...field} placeholder="New Ingredient Name" onKeyDown={handleKeyDown} ref={newIngredientNameRef} />
+                      <Input
+                        {...field}
+                        placeholder="New Ingredient Name"
+                        onKeyDown={handleKeyDown}
+                        ref={newIngredientNameRef}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -418,8 +424,8 @@ const RecipeForm: React.FC<RecipeFormProps> = ({ recipe, id }) => {
       <div className="bg-white p-8 rounded-xl shadow-md space-y-4">
         <h2 className="text-lg font-medium">✨ AI Recipe Assistant</h2>
         <p className="text-sm text-gray-600">
-          Paste a recipe from a website, text, or anywhere else, and the AI will automatically fill out the form for you. (레시피를 웹사이트, 텍스트 등
-          어디에서든 붙여넣기하면 AI가 자동으로 양식을 작성해줍니다.)
+          Paste a recipe from a website, text, or anywhere else, and the AI will automatically fill out the form for
+          you. (레시피를 웹사이트, 텍스트 등 어디에서든 붙여넣기하면 AI가 자동으로 양식을 작성해줍니다.)
         </p>
         <Textarea
           placeholder="Paste your recipe here... (여기에 레시피를 붙여넣으세요...)"

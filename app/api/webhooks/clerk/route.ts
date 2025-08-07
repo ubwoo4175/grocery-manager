@@ -67,14 +67,11 @@ export async function POST(req: Request) {
       await clerkClient()
     ).users.updateUserMetadata(id, {
       privateMetadata: {
-        apiCallCount: 0,
+        apiCount: 0,
         apiCountResetDate: nextResetDate.toISOString(),
       },
     });
-    return new Response("Successfully updated user metadata", {
-      status: 200,
-    });
   }
 
-  return new Response("", { status: 200 });
+  return new Response("Initialized user metadata", { status: 200 });
 }
